@@ -150,3 +150,21 @@ export const getNotifications = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updateProfilePicture = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    const { profilePicture } = req.body;
+    user.profilePicture = profilePicture;
+    await user.save();
+
+    res.status(200).json({ profilePicture: user.profilePicture });
+  } catch (error) {
+    next(error);
+  }
+};

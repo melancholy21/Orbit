@@ -122,7 +122,7 @@ const StatusBar = () => {
         <div 
           ref={scrollRef} 
           onScroll={checkScroll}
-          className="w-full overflow-x-auto pb-4 pt-2 no-scrollbar"
+          className="w-full overflow-x-hidden pb-4 pt-2 no-scrollbar"
         >
           <div className="flex gap-4 px-4 min-w-max">
           
@@ -219,20 +219,39 @@ const StatusBar = () => {
           {friends.map(friend => {
             if (friend._id === selectedFriend) {
               const isFree = friend.status?.isFree;
+
+              // Calculate smart positioning so the popover never overflows
+              const popoverWidth = 224; // w-56 = 14rem = 224px
+              const screenWidth = window.innerWidth;
+              const padding = 8;
+              let left = popoverPos.left;
+              let transformX = '-50%';
+
+              // If popover would overflow on the right
+              if (left + popoverWidth / 2 > screenWidth - padding) {
+                left = screenWidth - padding;
+                transformX = '-100%';
+              }
+              // If popover would overflow on the left
+              else if (left - popoverWidth / 2 < padding) {
+                left = padding;
+                transformX = '0%';
+              }
+
               return (
                 <div 
                   key={`popover-${friend._id}`}
                   className="fixed bg-popover text-popover-foreground border border-border p-3 rounded-xl shadow-2xl w-56 animate-in fade-in zoom-in-95 duration-200"
-                  style={{ top: popoverPos.top, left: popoverPos.left, transform: 'translateX(-50%)' }}
+                  style={{ top: popoverPos.top, left, transform: `translateX(${transformX})` }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-sm">{friend.username}</span>
-                    <button onClick={() => setSelectedFriend(null)} className="text-muted-foreground hover:text-foreground">
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <span className="font-semibold text-sm break-all overflow-hidden">{friend.username}</span>
+                    <button onClick={() => setSelectedFriend(null)} className="text-muted-foreground hover:text-foreground shrink-0">
                       <X size={14} />
                     </button>
                   </div>
-                  <p className="text-sm mb-1 font-medium">
+                  <p className="text-sm mb-1 font-medium break-words overflow-wrap-anywhere">
                     {friend.status.emoji} {friend.status.text}
                   </p>
                   <p className="text-xs text-muted-foreground mb-3">

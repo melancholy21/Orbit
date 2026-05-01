@@ -56,6 +56,15 @@ const deletePost = async (postId, token) => {
   return response.data;
 };
 
+// Edit post
+const editPost = async (postId, postData, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.put(API_URL + postId, postData, config);
+  return response.data;
+};
+
 // Add reply to comment
 const addReply = async (commentId, replyData, token) => {
   const config = {
@@ -71,6 +80,7 @@ const postService = {
   toggleLike,
   addComment,
   deletePost,
+  editPost,
   addReply
 };
 

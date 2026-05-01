@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Home, Search, PlusSquare, User, Moon, Sun, Orbit } from 'lucide-react';
+import { LogOut, Home, Search, User, Moon, Sun, Orbit, PartyPopper, Radio } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
 import { useTheme } from './ThemeProvider';
@@ -27,7 +27,8 @@ const Layout = () => {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/search', icon: Search, label: 'Search' },
-    { path: '/post', icon: PlusSquare, label: 'Post' },
+    { path: '/hangs', icon: PartyPopper, label: 'Hangs' },
+    { path: '/lobby', icon: Radio, label: 'Lobby' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 

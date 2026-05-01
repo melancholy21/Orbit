@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, Send, Loader2, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Image as ImageIcon, Send, Loader2, X, Radio } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getPosts, createPost, reset } from '../features/posts/postSlice';
 import PostCard from '../components/PostCard';
 import StatusBar from '../components/StatusBar';
 import { Card, CardContent } from '../components/ui/card';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import toast from 'react-hot-toast';
@@ -13,6 +14,7 @@ import axios from 'axios';
 
 const Home = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
   const { user } = useSelector((state) => state.auth);
@@ -22,22 +24,34 @@ const Home = () => {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [lobbyCount, setLobbyCount] = useState(0);
 
   useEffect(() => {
     if (isError) {
       toast.error(message);
-      // We need to dispatch reset here to clear the error so it doesn't persist
       dispatch(reset());
     }
-  }, [isError, message, dispatch]);
 
-  useEffect(() => {
     dispatch(getPosts());
-    
+
+    // Check lobby presence
+    const checkLobby = async () => {
+      try {
+        const res = await axios.get('/api/lobby/presence', {
+          headers: { Authorization: `Bearer ${user?.token}` },
+          baseURL: import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'
+        });
+        setLobbyCount(res.data?.count || 0);
+      } catch {}
+    };
+    if (user?.token) checkLobby();
+    const interval = setInterval(() => { if (user?.token) checkLobby(); }, 30000);
+
     return () => {
       dispatch(reset());
+      clearInterval(interval);
     };
-  }, [dispatch]);
+  }, [dispatch, user?.token]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -100,12 +114,30 @@ const Home = () => {
   return (
     <div className="flex flex-col gap-6 items-center w-full pb-10">
       <StatusBar />
-      
+
+      {/* Live Now Banner */}
+      {lobbyCount > 0 && (
+        <button
+          onClick={() => navigate('/lobby')}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/10 via-violet-500/10 to-primary/10 border border-primary/20 hover:border-primary/40 transition-all active:scale-[0.98]"
+        >
+          <div className="relative">
+            <Radio size={20} className="text-primary" />
+            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-foreground">{lobbyCount} friend{lobbyCount !== 1 ? 's' : ''} in the Lobby</p>
+            <p className="text-xs text-muted-foreground">Tap to join the vibe</p>
+          </div>
+          <span className="text-xs text-primary font-medium">Join →</span>
+        </button>
+      )}
       {/* Create Post Card */}
       <Card className="w-full">
         <CardContent className="pt-6">
           <div className="flex gap-3 items-start mb-4">
             <Avatar className="cursor-pointer hover:scale-105 transition-transform mt-1">
+              <AvatarImage src={user?.profilePicture} alt={user?.username} />
               <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                 {user?.username?.charAt(0).toUpperCase() || '?'}
               </AvatarFallback>

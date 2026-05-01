@@ -60,7 +60,12 @@ export const authSlice = createSlice({
     updateFollowing: (state, action) => {
       if (state.user) {
         state.user.following = action.payload;
-        // Also update local storage so it persists on refresh
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
+    updateProfilePic: (state, action) => {
+      if (state.user) {
+        state.user.profilePicture = action.payload;
         localStorage.setItem('user', JSON.stringify(state.user));
       }
     }
@@ -101,5 +106,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, updateFollowing } = authSlice.actions;
+export const { reset, updateFollowing, updateProfilePic } = authSlice.actions;
 export default authSlice.reducer;

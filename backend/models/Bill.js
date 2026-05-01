@@ -1,29 +1,31 @@
 import mongoose from 'mongoose';
 
-const postSchema = new mongoose.Schema({
-  author: {
+const billSchema = new mongoose.Schema({
+  payer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  content: {
+  amount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  description: {
     type: String,
     required: true,
-    maxlength: 63206
+    trim: true,
+    maxlength: 200
   },
-  image: {
-    type: String,
-    default: ''
-  },
-  likes: [{
+  participants: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  comments: [{
+  settled: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Comment'
+    ref: 'User'
   }]
 }, { timestamps: true });
 
-const Post = mongoose.model('Post', postSchema);
-export default Post;
+const Bill = mongoose.model('Bill', billSchema);
+export default Bill;

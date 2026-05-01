@@ -6,6 +6,9 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Search from './pages/Search';
+import Profile from './pages/Profile';
+import Hangs from './pages/Hangs';
+import Lobby from './pages/Lobby';
 import { useTheme } from './components/ThemeProvider';
 import ConstellationBackground from './components/ConstellationBackground';
 
@@ -24,8 +27,9 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="search" element={<Search />} />
-            <Route path="post" element={<Home />} />
-            <Route path="profile" element={<div style={{ padding: 20, textAlign: 'center' }}>Profile Page</div>} />
+            <Route path="hangs" element={<Hangs />} />
+            <Route path="lobby" element={<Lobby />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </BrowserRouter>

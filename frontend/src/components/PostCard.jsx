@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply } from 'lucide-react';
+import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleLike, addComment, deletePost, addReply } from '../features/posts/postSlice';
+import { toggleLike, addComment, deletePost, addReply, editPost } from '../features/posts/postSlice';
 import { Card, CardContent, CardFooter, CardHeader } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
@@ -15,10 +15,16 @@ const PostCard = ({ post }) => {
   const { user } = useSelector((state) => state.auth);
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState('');
-  
+
   // Track which comment we are replying to
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
+
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [editRemoveImage, setEditRemoveImage] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
 
   const isLiked = user && post.likes.includes(user._id);
   const isAuthor = user && post.author?._id === user._id;
@@ -37,6 +43,34 @@ const PostCard = ({ post }) => {
 
   const handleDeletePost = () => {
     dispatch(deletePost(post._id));
+  };
+
+  const handleStartEdit = () => {
+    setEditText(post.content);
+    setEditRemoveImage(false);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditText('');
+    setEditRemoveImage(false);
+  };
+
+  const handleSaveEdit = () => {
+    const contentChanged = editText.trim() !== post.content;
+    const imageChanged = editRemoveImage && post.image;
+
+    if (editText.trim() && (contentChanged || imageChanged)) {
+      dispatch(editPost({
+        postId: post._id,
+        content: editText.trim(),
+        ...(imageChanged ? { image: '' } : {})
+      }));
+    }
+    setIsEditing(false);
+    setEditText('');
+    setEditRemoveImage(false);
   };
 
   const handleReplySubmit = (e, commentId) => {
@@ -65,7 +99,7 @@ const PostCard = ({ post }) => {
             </span>
           </div>
         </div>
-        
+
         {isAuthor && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -74,7 +108,11 @@ const PostCard = ({ post }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDeletePost} className="text-destructive focus:text-destructive cursor-pointer">
+              <DropdownMenuItem onClick={handleStartEdit} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Edit Post</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDeletePost} className="cursor-pointer">
                 <Trash2 className="mr-2 h-4 w-4" />
                 <span>Delete Post</span>
               </DropdownMenuItem>
@@ -82,13 +120,95 @@ const PostCard = ({ post }) => {
           </DropdownMenu>
         )}
       </CardHeader>
-      
+
       <CardContent>
-        <p className="text-sm">{post.content}</p>
-        
-        {post.image && (
-          <div className="mt-4 rounded-lg overflow-hidden border border-border">
+        {isEditing ? (
+          <div className="space-y-3">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full min-h-[80px] bg-background/60 text-foreground text-sm p-3 rounded-xl border border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none outline-none"
+              autoFocus
+            />
+            <div className="flex items-center gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelEdit}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <X size={14} />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={!editText.trim() || (editText.trim() === post.content && !editRemoveImage)}
+                className="gap-1.5"
+              >
+                <Check size={14} />
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          (() => {
+            const CHAR_LIMIT = 300;
+            const LINE_LIMIT = 6;
+            const lines = post.content.split('\n');
+            const isTooLong = post.content.length > CHAR_LIMIT || lines.length > LINE_LIMIT;
+
+            let displayText = post.content;
+            if (isTooLong && !showFullContent) {
+              if (lines.length > LINE_LIMIT) {
+                displayText = lines.slice(0, LINE_LIMIT).join('\n');
+              }
+              if (displayText.length > CHAR_LIMIT) {
+                displayText = displayText.slice(0, CHAR_LIMIT);
+              }
+              displayText = displayText.trimEnd() + '...';
+            }
+
+            return (
+              <div>
+                <p className="text-sm whitespace-pre-wrap break-words">{displayText}</p>
+                {isTooLong && (
+                  <button
+                    onClick={() => setShowFullContent(!showFullContent)}
+                    className="text-xs font-semibold text-primary hover:text-primary/80 mt-1 transition-colors"
+                  >
+                    {showFullContent ? 'See less' : 'See more'}
+                  </button>
+                )}
+              </div>
+            );
+          })()
+        )}
+
+        {post.image && !editRemoveImage && (
+          <div className="mt-4 rounded-lg overflow-hidden border border-border relative group">
             <img src={post.image} alt="Post content" className="w-full h-auto object-cover" />
+            {isEditing && (
+              <button
+                onClick={() => setEditRemoveImage(true)}
+                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                title="Remove image"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {isEditing && editRemoveImage && post.image && (
+          <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 p-4 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Image will be removed</span>
+            <button
+              onClick={() => setEditRemoveImage(false)}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              Undo
+            </button>
           </div>
         )}
       </CardContent>
@@ -97,8 +217,8 @@ const PostCard = ({ post }) => {
         <Separator />
         <div className="flex items-center gap-6 px-6 py-3 w-full">
           <div className="flex items-center gap-1.5">
-            <button 
-              onClick={handleLike} 
+            <button
+              onClick={handleLike}
               className={`hover:text-primary transition-colors ${isLiked ? 'text-primary' : 'text-muted-foreground'}`}
             >
               <Heart size={20} className={isLiked ? "fill-current" : ""} />
@@ -107,8 +227,8 @@ const PostCard = ({ post }) => {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button 
-              onClick={() => setExpanded(!expanded)} 
+            <button
+              onClick={() => setExpanded(!expanded)}
               className="text-muted-foreground hover:text-primary transition-colors"
             >
               <MessageCircle size={20} />
@@ -135,7 +255,7 @@ const PostCard = ({ post }) => {
                         <p className="text-sm">{comment.content}</p>
                       </div>
                       <div className="flex items-center mt-1 ml-1">
-                        <button 
+                        <button
                           onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
                           className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                         >
@@ -190,7 +310,7 @@ const PostCard = ({ post }) => {
                 </div>
               ))}
             </div>
-            
+
             <Separator className="mb-4" />
 
             <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">

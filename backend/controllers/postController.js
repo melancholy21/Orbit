@@ -127,6 +127,49 @@ export const deletePost = async (req, res, next) => {
   }
 };
 
+export const editPost = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      res.status(404);
+      throw new Error('Post not found');
+    }
+
+    if (post.author.toString() !== req.user.id) {
+      res.status(401);
+      throw new Error('User not authorized to edit this post');
+    }
+
+    const { content, image } = req.body;
+    if (!content || !content.trim()) {
+      res.status(400);
+      throw new Error('Post content cannot be empty');
+    }
+
+    post.content = content;
+    // Allow removing or updating image — if image key is present in body, update it
+    if (image !== undefined) {
+      post.image = image;
+    }
+    await post.save();
+
+    const updatedPost = await Post.findById(post._id)
+      .populate('author', 'username profilePicture')
+      .populate({
+        path: 'comments',
+        populate: [
+          { path: 'author', select: 'username profilePicture' },
+          { path: 'replies.author', select: 'username profilePicture' }
+        ]
+      });
+
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const replyToComment = async (req, res, next) => {
   try {
     const { content } = req.body;
@@ -162,3 +205,20 @@ export const replyToComment = async (req, res, next) => {
 };
 
 
+export const getUserPosts = async (req, res, next) => {
+  try {
+    const posts = await Post.find({ author: req.params.userId })
+      .populate('author', 'username profilePicture')
+      .populate({
+        path: 'comments',
+        populate: [
+          { path: 'author', select: 'username profilePicture' },
+          { path: 'replies.author', select: 'username profilePicture' }
+        ]
+      })
+      .sort({ createdAt: -1 });
+    res.status(200).json(posts);
+  } catch (error) {
+    next(error);
+  }
+};

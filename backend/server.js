@@ -1,17 +1,23 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
+import { initSocket, lobbyUsers } from './socket.js';
 
 // Connect to database
 connectDB();
 
 const app = express();
+const httpServer = http.createServer(app);
+
+// Initialize Socket.io
+const io = initSocket(httpServer);
 
 // Security Middleware
 app.use(helmet());
@@ -29,16 +35,23 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Make io accessible in routes
+app.set('io', io);
+
 // Routes
 import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import hangsRoutes from './routes/hangsRoutes.js';
+import lobbyRoutes from './routes/lobbyRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/hangs', hangsRoutes);
+app.use('/api/lobby', lobbyRoutes);
 
 // Make uploads folder static
 const __dirname = path.resolve();
@@ -49,4 +62,4 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`Server started on port ${PORT}`));

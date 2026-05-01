@@ -63,6 +63,18 @@ export const deletePost = createAsyncThunk('posts/delete', async (postId, thunkA
   }
 });
 
+export const editPost = createAsyncThunk('posts/edit', async ({ postId, content, image }, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user.token;
+    const data = { content };
+    if (image !== undefined) data.image = image;
+    return await postService.editPost(postId, data, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 export const addReply = createAsyncThunk('posts/addReply', async (replyData, thunkAPI) => {
   try {
     const token = thunkAPI.getState().auth.user.token;
@@ -121,6 +133,12 @@ export const postSlice = createSlice({
       })
       .addCase(deletePost.fulfilled, (state, action) => {
         state.posts = state.posts.filter((post) => post._id !== action.payload.id);
+      })
+      .addCase(editPost.fulfilled, (state, action) => {
+        const index = state.posts.findIndex((p) => p._id === action.payload._id);
+        if (index !== -1) {
+          state.posts[index] = action.payload;
+        }
       })
       .addCase(addReply.fulfilled, (state, action) => {
         const updatedComment = action.payload;
