@@ -64,6 +64,8 @@ const Layout = () => {
 
   const isChatView = location.pathname.startsWith('/messages/') && location.pathname !== '/messages';
 
+  if (!user) return null;
+
   return (
     <div className="flex flex-col min-h-screen relative overflow-hidden">
       {/* Top App Bar */}

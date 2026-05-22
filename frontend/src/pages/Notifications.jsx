@@ -51,7 +51,11 @@ const Notifications = () => {
 
     // Navigate based on type
     if (['follow', 'nudge', 'friend_request', 'friend_accept'].includes(notification.type)) {
-      navigate(`/profile/${notification.sender._id}`);
+      if (notification.sender?._id) {
+        navigate(`/profile/${notification.sender._id}`);
+      } else {
+        navigate('/');
+      }
     } else if (notification.post) {
       navigate(`/post/${notification.post}`);
     } else {
@@ -111,7 +115,7 @@ const Notifications = () => {
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={notif.sender?.profilePicture} />
                   <AvatarFallback className="bg-primary/20 text-primary">
-                    {(notif.sender?.firstName || notif.sender?.lastName) ? (notif.sender.firstName ? notif.sender.firstName.charAt(0).toUpperCase() : notif.sender.lastName.charAt(0).toUpperCase()) : notif.sender?.username?.charAt(0).toUpperCase()}
+                    {(notif.sender?.firstName || notif.sender?.lastName) ? (notif.sender.firstName ? notif.sender.firstName.charAt(0).toUpperCase() : notif.sender.lastName.charAt(0).toUpperCase()) : notif.sender?.username ? notif.sender.username.charAt(0).toUpperCase() : '?'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 border border-border/50">
@@ -124,7 +128,7 @@ const Notifications = () => {
                   <span className="font-bold">
                     {notif.sender?.firstName || notif.sender?.lastName
                       ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim()
-                      : notif.sender?.username}
+                      : notif.sender?.username || 'Deleted User'}
                   </span>
                   {(notif.sender?.firstName || notif.sender?.lastName) && (
                     <span className="text-xs text-muted-foreground ml-1">@{notif.sender?.username}</span>

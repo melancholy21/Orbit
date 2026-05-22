@@ -73,11 +73,13 @@ export const callback = async (req, res) => {
     }
 
     // Redirect back to frontend
-    res.redirect(`http://localhost:5173/lobby?spotify_connected=true&access_token=${access_token}`);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/lobby?spotify_connected=true&access_token=${access_token}`);
   } catch (error) {
     const errorMsg = error.response?.data?.error_description || error.response?.data?.error || error.message;
     console.error('Spotify Auth Error:', errorMsg);
-    res.redirect(`http://localhost:5173/lobby?error=${encodeURIComponent(errorMsg)}`);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/lobby?error=${encodeURIComponent(errorMsg)}`);
   }
 };
 
