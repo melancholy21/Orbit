@@ -79,6 +79,8 @@ export const callback = async (req, res) => {
       frontendUrl = 'https://' + frontendUrl;
     }
     const redirectUrl = `${frontendUrl}/lobby?spotify_connected=true&access_token=${encodeURIComponent(access_token)}`;
+    console.log('FRONTEND_URL raw:', JSON.stringify(process.env.FRONTEND_URL));
+    console.log('Redirect URL:', redirectUrl);
     res.redirect(redirectUrl);
   } catch (error) {
     const errorMsg = error.response?.data?.error_description || error.response?.data?.error || error.message;
