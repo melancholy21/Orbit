@@ -24,7 +24,8 @@ export const login = (req, res) => {
       client_id: process.env.SPOTIFY_CLIENT_ID,
       scope: scope,
       redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-      state: state
+      state: state,
+      show_dialog: true
     });
     
   res.json({ url });
@@ -73,12 +74,18 @@ export const callback = async (req, res) => {
     }
 
     // Redirect back to frontend
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (frontendUrl && !frontendUrl.startsWith('http')) {
+      frontendUrl = 'https://' + frontendUrl;
+    }
     res.redirect(`${frontendUrl}/lobby?spotify_connected=true&access_token=${access_token}`);
   } catch (error) {
     const errorMsg = error.response?.data?.error_description || error.response?.data?.error || error.message;
     console.error('Spotify Auth Error:', errorMsg);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (frontendUrl && !frontendUrl.startsWith('http')) {
+      frontendUrl = 'https://' + frontendUrl;
+    }
     res.redirect(`${frontendUrl}/lobby?error=${encodeURIComponent(errorMsg)}`);
   }
 };
