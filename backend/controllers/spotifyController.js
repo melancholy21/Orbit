@@ -74,19 +74,21 @@ export const callback = async (req, res) => {
     }
 
     // Redirect back to frontend
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (frontendUrl && !frontendUrl.startsWith('http')) {
+    let frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim().replace(/\/+$/, '');
+    if (!frontendUrl.startsWith('http')) {
       frontendUrl = 'https://' + frontendUrl;
     }
-    res.redirect(`${frontendUrl}/lobby?spotify_connected=true&access_token=${access_token}`);
+    const redirectUrl = `${frontendUrl}/lobby?spotify_connected=true&access_token=${encodeURIComponent(access_token)}`;
+    res.redirect(redirectUrl);
   } catch (error) {
     const errorMsg = error.response?.data?.error_description || error.response?.data?.error || error.message;
     console.error('Spotify Auth Error:', errorMsg);
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (frontendUrl && !frontendUrl.startsWith('http')) {
+    let frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim().replace(/\/+$/, '');
+    if (!frontendUrl.startsWith('http')) {
       frontendUrl = 'https://' + frontendUrl;
     }
-    res.redirect(`${frontendUrl}/lobby?error=${encodeURIComponent(errorMsg)}`);
+    const redirectUrl = `${frontendUrl}/lobby?error=${encodeURIComponent(errorMsg)}`;
+    res.redirect(redirectUrl);
   }
 };
 
