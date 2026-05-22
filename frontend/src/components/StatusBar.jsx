@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { updateStatus } from '../features/auth/authSlice';
 import { Plus, X, HandMetal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import StatusDrawer from './StatusDrawer';
@@ -8,6 +10,8 @@ import toast from 'react-hot-toast';
 
 const StatusBar = () => {
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [friends, setFriends] = useState([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentUserStatus, setCurrentUserStatus] = useState(user?.status || null);
@@ -68,6 +72,7 @@ const StatusBar = () => {
       };
       await userService.updateStatus(emptyStatus, user.token);
       setCurrentUserStatus(emptyStatus);
+      dispatch(updateStatus(emptyStatus));
       toast.success('Status cleared');
     } catch (error) {
       toast.error('Failed to clear status');
@@ -135,7 +140,7 @@ const StatusBar = () => {
               <Avatar className={`w-16 h-16 border-2 transition-all ${isStatusActive(currentUserStatus) && currentUserStatus?.isFree ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'border-transparent'}`}>
                 <AvatarImage src={user?.profilePicture} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                  {user?.username?.charAt(0).toUpperCase()}
+                  {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
@@ -188,7 +193,7 @@ const StatusBar = () => {
                     <Avatar className={`w-16 h-16 border-2 transition-all ${isFree ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'border-transparent'}`}>
                       <AvatarImage src={friend.profilePicture} />
                       <AvatarFallback className="bg-muted text-muted-foreground text-xl">
-                        {friend.username?.charAt(0).toUpperCase()}
+                        {(friend.firstName || friend.lastName) ? (friend.firstName ? friend.firstName.charAt(0).toUpperCase() : friend.lastName.charAt(0).toUpperCase()) : friend.username?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
 
@@ -245,9 +250,16 @@ const StatusBar = () => {
                   style={{ top: popoverPos.top, left, transform: `translateX(${transformX})` }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <span className="font-semibold text-sm break-all overflow-hidden">{friend.username}</span>
-                    <button onClick={() => setSelectedFriend(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+                  <div className="flex justify-between items-start mb-1 gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-sm break-all overflow-hidden leading-tight">
+                        {friend.firstName || friend.lastName 
+                          ? `${friend.firstName || ''} ${friend.lastName || ''}`.trim() 
+                          : friend.username}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">@{friend.username}</span>
+                    </div>
+                    <button onClick={() => setSelectedFriend(null)} className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5">
                       <X size={14} />
                     </button>
                   </div>
@@ -261,11 +273,21 @@ const StatusBar = () => {
                   {isFree && (
                     <button 
                       onClick={() => handleNudge(friend._id)}
-                      className="w-full bg-primary/10 text-primary hover:bg-primary/20 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors"
+                      className="w-full bg-primary/10 text-primary hover:bg-primary/20 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors mb-2"
                     >
                       <HandMetal size={14} /> Nudge
                     </button>
                   )}
+                  
+                  <button 
+                    onClick={() => {
+                      setSelectedFriend(null);
+                      navigate(`/profile/${friend._id}`);
+                    }}
+                    className="w-full bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors"
+                  >
+                    View Profile
+                  </button>
                 </div>
               );
             }

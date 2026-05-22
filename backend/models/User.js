@@ -25,7 +25,27 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  firstName: {
+    type: String,
+    default: ''
+  },
+  lastName: {
+    type: String,
+    default: ''
+  },
+  isOnboarded: {
+    type: Boolean,
+    default: false
+  },
   bio: {
+    type: String,
+    default: ''
+  },
+  location: {
+    type: String,
+    default: ''
+  },
+  website: {
     type: String,
     default: ''
   },
@@ -37,6 +57,21 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  friends: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  friendRequestsSent: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  friendRequestsReceived: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  spotifyAccessToken: { type: String, default: '' },
+  spotifyRefreshToken: { type: String, default: '' },
+  spotifyTokenExpiry: { type: Date, default: null },
   status: {
     isFree: { type: Boolean, default: false },
     emoji: { type: String, default: '' },
@@ -44,6 +79,9 @@ const userSchema = new mongoose.Schema({
     expiresAt: { type: Date, default: null }
   }
 }, { timestamps: true });
+
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function() {

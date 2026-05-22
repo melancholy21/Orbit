@@ -42,6 +42,17 @@ export const toggleLike = createAsyncThunk('posts/like', async (postId, thunkAPI
   }
 });
 
+// Share post
+export const sharePost = createAsyncThunk('posts/share', async (postId, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user.token;
+    return await postService.sharePost(postId, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 // Add comment
 export const addComment = createAsyncThunk('posts/comment', async (commentData, thunkAPI) => {
   try {
@@ -123,6 +134,12 @@ export const postSlice = createSlice({
         const post = state.posts.find((p) => p._id === action.payload.id);
         if (post) {
           post.likes = action.payload.likes;
+        }
+      })
+      .addCase(sharePost.fulfilled, (state, action) => {
+        const post = state.posts.find((p) => p._id === action.payload.id);
+        if (post) {
+          post.shares = action.payload.shares;
         }
       })
       .addCase(addComment.fulfilled, (state, action) => {

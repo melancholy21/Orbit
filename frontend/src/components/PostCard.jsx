@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check } from 'lucide-react';
+import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Share } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleLike, addComment, deletePost, addReply, editPost } from '../features/posts/postSlice';
+import { useNavigate } from 'react-router-dom';
+import { toggleLike, addComment, deletePost, addReply, editPost, sharePost } from '../features/posts/postSlice';
 import { Card, CardContent, CardFooter, CardHeader } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
@@ -12,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 const PostCard = ({ post }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -82,19 +84,35 @@ const PostCard = ({ post }) => {
     }
   };
 
+  const handleShare = () => {
+    dispatch(sharePost(post._id));
+  };
+
   return (
     <Card className="w-full mb-6 overflow-hidden border-blue-500/30 shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)] bg-card/30 backdrop-blur-md">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex flex-row items-center gap-4">
+        <div 
+          className="flex flex-row items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => navigate(`/profile/${post.author?._id}`)}
+        >
           <Avatar>
             <AvatarImage src={post.author?.profilePicture} alt={post.author?.username} />
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {post.author?.username?.charAt(0).toUpperCase()}
+              {(post.author?.firstName || post.author?.lastName) ? (post.author.firstName ? post.author.firstName.charAt(0).toUpperCase() : post.author.lastName.charAt(0).toUpperCase()) : post.author?.username?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-bold text-base leading-none">{post.author?.username}</span>
-            <span className="text-xs text-muted-foreground mt-1">
+            <div className="flex flex-wrap items-baseline gap-1.5 leading-none">
+              <span className="font-bold text-base hover:underline">
+                {post.author?.firstName || post.author?.lastName
+                  ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim()
+                  : post.author?.username}
+              </span>
+              {(post.author?.firstName || post.author?.lastName) && (
+                <span className="text-xs text-muted-foreground font-medium">@{post.author?.username}</span>
+              )}
+            </div>
+            <span className="text-[10px] text-muted-foreground mt-1">
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
             </span>
           </div>
@@ -233,7 +251,19 @@ const PostCard = ({ post }) => {
             >
               <MessageCircle size={20} />
             </button>
-            <span className="text-sm font-medium text-muted-foreground">{post.comments.length}</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              {post.comments.reduce((total, comment) => total + 1 + (comment.replies ? comment.replies.length : 0), 0)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleShare}
+              className="text-muted-foreground hover:text-green-500 transition-colors"
+            >
+              <Share size={20} />
+            </button>
+            <span className="text-sm font-medium text-muted-foreground">{post.shares?.length || 0}</span>
           </div>
         </div>
 
@@ -246,12 +276,16 @@ const PostCard = ({ post }) => {
                     <Avatar className="w-6 h-6 mt-1">
                       <AvatarImage src={comment.author?.profilePicture} />
                       <AvatarFallback className="bg-secondary text-xs">
-                        {comment.author?.username?.charAt(0).toUpperCase()}
+                        {(comment.author?.firstName || comment.author?.lastName) ? (comment.author.firstName ? comment.author.firstName.charAt(0).toUpperCase() : comment.author.lastName.charAt(0).toUpperCase()) : comment.author?.username?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="bg-background/40 backdrop-blur-sm border border-blue-500/10 rounded-lg px-3 py-2">
-                        <p className="text-xs font-bold mb-0.5">{comment.author?.username}</p>
+                        <p className="text-xs font-bold mb-0.5">
+                          {comment.author?.firstName || comment.author?.lastName
+                            ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim()
+                            : comment.author?.username}
+                        </p>
                         <p className="text-sm">{comment.content}</p>
                       </div>
                       <div className="flex items-center mt-1 ml-1">
@@ -273,12 +307,16 @@ const PostCard = ({ post }) => {
                           <Avatar className="w-5 h-5 mt-1">
                             <AvatarImage src={reply.author?.profilePicture} />
                             <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                              {reply.author?.username?.charAt(0).toUpperCase()}
+                              {(reply.author?.firstName || reply.author?.lastName) ? (reply.author.firstName ? reply.author.firstName.charAt(0).toUpperCase() : reply.author.lastName.charAt(0).toUpperCase()) : reply.author?.username?.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <div className="bg-background/40 backdrop-blur-sm border border-blue-500/10 rounded-lg px-3 py-2">
-                              <p className="text-xs font-bold mb-0.5">{reply.author?.username}</p>
+                              <p className="text-xs font-bold mb-0.5">
+                                {reply.author?.firstName || reply.author?.lastName
+                                  ? `${reply.author.firstName || ''} ${reply.author.lastName || ''}`.trim()
+                                  : reply.author?.username}
+                              </p>
                               <p className="text-xs">{reply.content}</p>
                             </div>
                           </div>
@@ -292,7 +330,7 @@ const PostCard = ({ post }) => {
                     <form onSubmit={(e) => handleReplySubmit(e, comment._id)} className="flex items-center gap-2 pl-9 mt-1">
                       <Avatar className="w-6 h-6">
                         <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                          {user?.username?.charAt(0).toUpperCase()}
+                          {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <Input

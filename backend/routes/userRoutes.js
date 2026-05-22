@@ -1,14 +1,22 @@
 import express from 'express';
 const router = express.Router();
-import { getUserProfile, toggleFollow, searchUsers, updateStatus, getFriendsWithStatus, nudgeUser, getNotifications, updateProfilePicture } from '../controllers/userController.js';
+import { getUserProfile, toggleFollow, searchUsers, updateStatus, getFriendsWithStatus, nudgeUser, getNotifications, updateProfilePicture, updateProfile, sendFriendRequest, acceptFriendRequest, removeFriend, getFollowers, getFollowing, getFriendsList, getSuggestedUsers } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 router.get('/', protect, searchUsers);
 router.put('/status', protect, updateStatus);
 router.get('/friends/status', protect, getFriendsWithStatus);
+router.get('/suggestions', protect, getSuggestedUsers);
 router.get('/me/notifications', protect, getNotifications);
 router.put('/me/profile-picture', protect, updateProfilePicture);
+router.put('/me', protect, updateProfile);
 router.get('/:id', getUserProfile);
+router.get('/:id/followers', protect, getFollowers);
+router.get('/:id/following', protect, getFollowing);
+router.get('/:id/friends', protect, getFriendsList);
 router.put('/:id/follow', protect, toggleFollow);
 router.post('/:id/nudge', protect, nudgeUser);
+router.post('/friends/:id/request', protect, sendFriendRequest);
+router.put('/friends/:id/accept', protect, acceptFriendRequest);
+router.delete('/friends/:id/remove', protect, removeFriend);
 export default router;

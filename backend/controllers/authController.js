@@ -37,6 +37,13 @@ export const registerUser = async (req, res, next) => {
         username: user.username,
         email: user.email,
         following: user.following,
+        friends: user.friends,
+        friendRequestsSent: user.friendRequestsSent,
+        friendRequestsReceived: user.friendRequestsReceived,
+        profilePicture: user.profilePicture,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isOnboarded: user.isOnboarded,
         token: generateToken(user._id),
       });
     } else {
@@ -61,6 +68,13 @@ export const loginUser = async (req, res, next) => {
         username: user.username,
         email: user.email,
         following: user.following,
+        friends: user.friends,
+        friendRequestsSent: user.friendRequestsSent,
+        friendRequestsReceived: user.friendRequestsReceived,
+        profilePicture: user.profilePicture,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isOnboarded: user.isOnboarded,
         token: generateToken(user._id),
       });
     } else {

@@ -13,13 +13,14 @@ const useSocket = (token, autoJoin = false) => {
   const [currentStartedAt, setCurrentStartedAt] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sleepWarning, setSleepWarning] = useState(false);
+  const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'track' | 'queue'
 
   useEffect(() => {
     if (!token) return;
 
     const socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket']
     });
 
     socketRef.current = socket;
@@ -41,6 +42,7 @@ const useSocket = (token, autoJoin = false) => {
       setCurrentTrackIndex(state.currentTrackIndex ?? -1);
       setCurrentStartedAt(state.currentStartedAt);
       setIsPlaying(state.isPlaying ?? false);
+      setRepeatMode(state.repeatMode || 'off');
     });
 
     socket.on('presenceUpdate', (users) => {
@@ -60,6 +62,7 @@ const useSocket = (token, autoJoin = false) => {
       setCurrentTrackIndex(data.currentTrackIndex ?? -1);
       setCurrentStartedAt(data.currentStartedAt);
       setIsPlaying(data.isPlaying ?? false);
+      setRepeatMode(data.repeatMode || 'off');
     });
 
     socket.on('syncResponse', (data) => {
@@ -67,6 +70,7 @@ const useSocket = (token, autoJoin = false) => {
       setCurrentTrackIndex(data.currentTrackIndex ?? -1);
       setCurrentStartedAt(data.currentStartedAt);
       setIsPlaying(data.isPlaying ?? false);
+      setRepeatMode(data.repeatMode || 'off');
     });
 
     socket.on('sleepTimeout', () => {
@@ -86,6 +90,11 @@ const useSocket = (token, autoJoin = false) => {
 
   const leaveLobby = useCallback(() => {
     socketRef.current?.emit('leaveLobby');
+    setMessages([]);
+    setQueue([]);
+    setLobbyUsers([]);
+    setCurrentTrackIndex(-1);
+    setIsPlaying(false);
   }, []);
 
   const updateMode = useCallback((mode) => {
@@ -104,6 +113,14 @@ const useSocket = (token, autoJoin = false) => {
     socketRef.current?.emit('skipTrack');
   }, []);
 
+  const previousTrack = useCallback(() => {
+    socketRef.current?.emit('previousTrack');
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    socketRef.current?.emit('togglePlay');
+  }, []);
+
   const trackEnded = useCallback(() => {
     socketRef.current?.emit('trackEnded');
   }, []);
@@ -114,6 +131,14 @@ const useSocket = (token, autoJoin = false) => {
 
   const clearQueue = useCallback(() => {
     socketRef.current?.emit('clearQueue');
+  }, []);
+
+  const shuffleQueue = useCallback(() => {
+    socketRef.current?.emit('shuffleQueue');
+  }, []);
+
+  const toggleRepeat = useCallback(() => {
+    socketRef.current?.emit('toggleRepeat');
   }, []);
 
   return {
@@ -127,15 +152,20 @@ const useSocket = (token, autoJoin = false) => {
     isPlaying,
     sleepWarning,
     setSleepWarning,
+    repeatMode,
     joinLobby,
     leaveLobby,
     updateMode,
     sendMessage,
     addToQueue,
     skipTrack,
+    previousTrack,
+    togglePlay,
     trackEnded,
     requestSync,
-    clearQueue
+    clearQueue,
+    shuffleQueue,
+    toggleRepeat
   };
 };
 

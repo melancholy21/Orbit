@@ -74,6 +74,17 @@ const addReply = async (commentId, replyData, token) => {
   return response.data;
 };
 
+// Share post
+const sharePost = async (postId, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+  const response = await axios.post(API_URL + postId + '/share', {}, config);
+  return { id: postId, shares: response.data };
+};
+
 const postService = {
   getPosts,
   createPost,
@@ -81,7 +92,8 @@ const postService = {
   addComment,
   deletePost,
   editPost,
-  addReply
+  addReply,
+  sharePost
 };
 
 export default postService;

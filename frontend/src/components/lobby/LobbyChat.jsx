@@ -62,7 +62,7 @@ const LobbyChat = ({ messages, onSendMessage, currentUserId }) => {
       {/* Messages */}
       <div
         ref={containerRef}
-        className={`flex-1 overflow-y-auto px-3 py-2 space-y-3 transition-opacity duration-500 ${
+        className={`flex-1 overflow-y-auto px-3 py-2 space-y-3 transition-opacity duration-500 scrollbar-hide ${
           isIdle ? 'opacity-30' : 'opacity-100'
         }`}
       >
@@ -86,7 +86,7 @@ const LobbyChat = ({ messages, onSendMessage, currentUserId }) => {
                     </AvatarFallback>
                   </Avatar>
                 )}
-                <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[75%] min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                   {!isOwn && (
                     <p className="text-[10px] text-muted-foreground font-medium mb-0.5 px-1">
                       {msg.sender?.username}

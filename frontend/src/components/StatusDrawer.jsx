@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { updateStatus } from '../features/auth/authSlice';
 import { X } from 'lucide-react';
 import userService from '../features/users/userService';
 import { Button } from './ui/button';
@@ -16,6 +17,7 @@ const PRESETS = [
 
 const StatusDrawer = ({ isOpen, onClose, currentStatus, onStatusUpdate }) => {
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   
   const [isFree, setIsFree] = useState(currentStatus?.isFree || false);
   const [emoji, setEmoji] = useState(currentStatus?.emoji || '');
@@ -40,6 +42,7 @@ const StatusDrawer = ({ isOpen, onClose, currentStatus, onStatusUpdate }) => {
 
       const updatedUser = await userService.updateStatus(statusData, user.token);
       onStatusUpdate(updatedUser.status);
+      dispatch(updateStatus(updatedUser.status));
       toast.success('Status updated!');
       onClose();
     } catch (error) {

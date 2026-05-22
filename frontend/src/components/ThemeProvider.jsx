@@ -3,29 +3,32 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme === 'dark';
+    if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'orbit') {
+      return savedTheme;
     }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return 'orbit'; // Orbit is default
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (isDarkMode) {
+    root.classList.remove('dark', 'orbit');
+    
+    if (theme === 'dark') {
       root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    } else if (theme === 'orbit') {
+      root.classList.add('orbit');
     }
-  }, [isDarkMode]);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+  const toggleDarkMode = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : prev === 'dark' ? 'orbit' : 'light'));
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
+    <ThemeContext.Provider value={{ theme, setTheme, isDarkMode: theme !== 'light', toggleDarkMode }}>
       {children}
     </ThemeContext.Provider>
   );

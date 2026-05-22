@@ -9,8 +9,16 @@ import Search from './pages/Search';
 import Profile from './pages/Profile';
 import Hangs from './pages/Hangs';
 import Lobby from './pages/Lobby';
+import Messages from './pages/Messages';
+import Chat from './pages/Chat';
+import Notifications from './pages/Notifications';
+import SinglePost from './pages/SinglePost';
+import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
 import { useTheme } from './components/ThemeProvider';
 import ConstellationBackground from './components/ConstellationBackground';
+
+import { LobbyProvider } from './context/LobbyContext';
 
 function App() {
   const { isDarkMode } = useTheme();
@@ -20,9 +28,11 @@ function App() {
       {isDarkMode && <ConstellationBackground />}
       <Toaster position="top-center" />
       <BrowserRouter>
-        <Routes>
+        <LobbyProvider>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
@@ -30,8 +40,15 @@ function App() {
             <Route path="hangs" element={<Hangs />} />
             <Route path="lobby" element={<Lobby />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="profile/:id" element={<Profile />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:userId" element={<Chat />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="post/:id" element={<SinglePost />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
-        </Routes>
+          </Routes>
+        </LobbyProvider>
       </BrowserRouter>
     </div>
   );

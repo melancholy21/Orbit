@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
+import { EventEmitter } from 'events';
+EventEmitter.defaultMaxListeners = 20;
 import express from 'express';
 import http from 'http';
 import path from 'path';
@@ -45,6 +47,9 @@ import userRoutes from './routes/userRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import hangsRoutes from './routes/hangsRoutes.js';
 import lobbyRoutes from './routes/lobbyRoutes.js';
+import spotifyRoutes from './routes/spotifyRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
@@ -52,6 +57,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/hangs', hangsRoutes);
 app.use('/api/lobby', lobbyRoutes);
+app.use('/api/spotify', spotifyRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Make uploads folder static
 const __dirname = path.resolve();

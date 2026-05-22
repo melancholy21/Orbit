@@ -21,7 +21,11 @@ const BucketCard = ({ item, currentUserId, onToggleImIn, onDelete }) => {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-base text-foreground leading-snug">{item.title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            by <span className="font-medium text-foreground/70">{item.author?.username}</span>
+            by <span className="font-medium text-foreground/70">
+              {item.author?.firstName || item.author?.lastName 
+                ? `${item.author.firstName || ''} ${item.author.lastName || ''}`.trim() 
+                : item.author?.username}
+            </span>
           </p>
         </div>
 
@@ -56,7 +60,7 @@ const BucketCard = ({ item, currentUserId, onToggleImIn, onDelete }) => {
             <Avatar key={user._id} className="w-7 h-7 border-2 border-background shadow-sm">
               <AvatarImage src={user.profilePicture} />
               <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                {user.username?.charAt(0).toUpperCase()}
+                {(user.firstName || user.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user.username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           ))}

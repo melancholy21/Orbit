@@ -68,6 +68,24 @@ export const authSlice = createSlice({
         state.user.profilePicture = action.payload;
         localStorage.setItem('user', JSON.stringify(state.user));
       }
+    },
+    updateStatus: (state, action) => {
+      if (state.user) {
+        state.user.status = action.payload;
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
+    updateUser: (state, action) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
+    },
+    updateSpotifyToken: (state, action) => {
+      if (state.user) {
+        state.user.spotifyAccessToken = action.payload;
+        localStorage.setItem('user', JSON.stringify(state.user));
+      }
     }
   },
   extraReducers: (builder) => {
@@ -106,5 +124,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, updateFollowing, updateProfilePic } = authSlice.actions;
+export const { reset, updateFollowing, updateProfilePic, updateStatus, updateUser, updateSpotifyToken } = authSlice.actions;
 export default authSlice.reducer;

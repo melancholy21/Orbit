@@ -139,7 +139,7 @@ const Home = () => {
             <Avatar className="cursor-pointer hover:scale-105 transition-transform mt-1">
               <AvatarImage src={user?.profilePicture} alt={user?.username} />
               <AvatarFallback className="bg-primary text-primary-foreground font-bold">
-                {user?.username?.charAt(0).toUpperCase() || '?'}
+                {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
             <textarea

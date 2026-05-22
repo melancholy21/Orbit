@@ -70,11 +70,13 @@ const LedgerSection = ({ bills, balance, currentUserId, onSettle, onDelete }) =>
                       <Avatar className="w-5 h-5">
                         <AvatarImage src={bill.payer?.profilePicture} />
                         <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                          {bill.payer?.username?.charAt(0).toUpperCase()}
+                          {(bill.payer?.firstName || bill.payer?.lastName) ? (bill.payer.firstName ? bill.payer.firstName.charAt(0).toUpperCase() : bill.payer.lastName.charAt(0).toUpperCase()) : bill.payer?.username?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm text-muted-foreground">
-                        {isPayer ? 'You' : bill.payer?.username} paid <span className="font-semibold text-foreground">₱{bill.amount.toFixed(2)}</span>
+                        {isPayer ? 'You' : (bill.payer?.firstName || bill.payer?.lastName 
+                          ? `${bill.payer.firstName || ''} ${bill.payer.lastName || ''}`.trim() 
+                          : bill.payer?.username)} paid <span className="font-semibold text-foreground">₱{bill.amount.toFixed(2)}</span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -115,7 +117,9 @@ const LedgerSection = ({ bills, balance, currentUserId, onSettle, onDelete }) =>
                       <div key={p._id} className="relative">
                         <Avatar className={`w-6 h-6 border ${pSettled ? 'border-green-500' : 'border-border'}`}>
                           <AvatarImage src={p.profilePicture} />
-                          <AvatarFallback className="text-[8px] bg-muted">{p.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback className="text-[8px] bg-muted">
+                            {(p.firstName || p.lastName) ? (p.firstName ? p.firstName.charAt(0).toUpperCase() : p.lastName.charAt(0).toUpperCase()) : p.username?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         {pSettled && (
                           <CheckCircle2 size={10} className="absolute -bottom-0.5 -right-0.5 text-green-500 fill-background" />

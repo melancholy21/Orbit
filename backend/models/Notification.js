@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['nudge', 'follow', 'like', 'comment'],
+    enum: ['nudge', 'follow', 'like', 'comment', 'friend_request', 'friend_accept', 'share'],
     required: true
   },
   read: {
@@ -22,6 +22,10 @@ const notificationSchema = new mongoose.Schema({
   },
   content: {
     type: String
+  },
+  post: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post'
   }
 }, { timestamps: true });
 

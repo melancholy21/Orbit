@@ -22,8 +22,14 @@ const postSchema = new mongoose.Schema({
   comments: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Comment'
+  }],
+  shares: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }]
 }, { timestamps: true });
+
+postSchema.index({ author: 1, createdAt: -1 });
 
 const Post = mongoose.model('Post', postSchema);
 export default Post;

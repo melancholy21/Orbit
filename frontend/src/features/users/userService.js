@@ -39,6 +39,18 @@ const updateProfilePicture = async (profilePicture, token) => {
   return response.data;
 };
 
+// Update profile details
+const updateProfile = async (profileData, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.put(API_URL + 'me', profileData, config);
+  return response.data;
+};
+
 // Get friends with status
 const getFriendsWithStatus = async (token) => {
   const config = {
@@ -91,6 +103,7 @@ const userService = {
   getUserProfile,
   getUserPosts,
   updateProfilePicture,
+  updateProfile,
   getFriendsWithStatus,
   updateStatus,
   nudgeUser,

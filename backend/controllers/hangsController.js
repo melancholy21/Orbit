@@ -21,8 +21,8 @@ export const createBucketItem = async (req, res, next) => {
     });
 
     const populated = await BucketItem.findById(item._id)
-      .populate('author', 'username profilePicture')
-      .populate('imIn', 'username profilePicture');
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('imIn', 'username profilePicture firstName lastName');
 
     res.status(201).json(populated);
   } catch (error) {
@@ -33,8 +33,8 @@ export const createBucketItem = async (req, res, next) => {
 export const getBucketItems = async (req, res, next) => {
   try {
     const items = await BucketItem.find()
-      .populate('author', 'username profilePicture')
-      .populate('imIn', 'username profilePicture')
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('imIn', 'username profilePicture firstName lastName')
       .sort({ createdAt: -1 });
 
     // Sort by imIn count descending
@@ -66,8 +66,8 @@ export const toggleImIn = async (req, res, next) => {
     await item.save();
 
     const populated = await BucketItem.findById(item._id)
-      .populate('author', 'username profilePicture')
-      .populate('imIn', 'username profilePicture');
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('imIn', 'username profilePicture firstName lastName');
 
     res.status(200).json(populated);
   } catch (error) {
@@ -125,8 +125,8 @@ export const createPoll = async (req, res, next) => {
     });
 
     const populated = await Poll.findById(poll._id)
-      .populate('author', 'username profilePicture')
-      .populate('options.votes', 'username profilePicture');
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('options.votes', 'username profilePicture firstName lastName');
 
     res.status(201).json(populated);
   } catch (error) {
@@ -140,8 +140,8 @@ export const getPolls = async (req, res, next) => {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const polls = await Poll.find({ expiresAt: { $gte: cutoff } })
-      .populate('author', 'username profilePicture')
-      .populate('options.votes', 'username profilePicture')
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('options.votes', 'username profilePicture firstName lastName')
       .sort({ createdAt: -1 });
 
     // Auto-resolve winners for expired polls
@@ -160,7 +160,7 @@ export const getPolls = async (req, res, next) => {
         if (maxVotes > 0) {
           p.winner = winnerIdx;
           // Also save to DB in background
-          Poll.findByIdAndUpdate(p._id, { winner: winnerIdx }).catch(() => {});
+          Poll.findByIdAndUpdate(p._id, { winner: winnerIdx }).catch(() => { });
         }
       }
       p.isExpired = new Date() >= new Date(p.expiresAt);
@@ -203,8 +203,8 @@ export const votePoll = async (req, res, next) => {
     await poll.save();
 
     const populated = await Poll.findById(poll._id)
-      .populate('author', 'username profilePicture')
-      .populate('options.votes', 'username profilePicture');
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('options.votes', 'username profilePicture firstName lastName');
 
     res.status(200).json(populated);
   } catch (error) {
@@ -258,9 +258,9 @@ export const addBill = async (req, res, next) => {
     });
 
     const populated = await Bill.findById(bill._id)
-      .populate('payer', 'username profilePicture')
-      .populate('participants', 'username profilePicture')
-      .populate('settled', 'username profilePicture');
+      .populate('payer', 'username profilePicture firstName lastName')
+      .populate('participants', 'username profilePicture firstName lastName')
+      .populate('settled', 'username profilePicture firstName lastName');
 
     res.status(201).json(populated);
   } catch (error) {
@@ -276,9 +276,9 @@ export const getBills = async (req, res, next) => {
     const bills = await Bill.find({
       $or: [{ payer: userId }, { participants: userId }]
     })
-      .populate('payer', 'username profilePicture')
-      .populate('participants', 'username profilePicture')
-      .populate('settled', 'username profilePicture')
+      .populate('payer', 'username profilePicture firstName lastName')
+      .populate('participants', 'username profilePicture firstName lastName')
+      .populate('settled', 'username profilePicture firstName lastName')
       .sort({ createdAt: -1 });
 
     // Compute balances
@@ -347,9 +347,9 @@ export const settleBill = async (req, res, next) => {
     await bill.save();
 
     const populated = await Bill.findById(bill._id)
-      .populate('payer', 'username profilePicture')
-      .populate('participants', 'username profilePicture')
-      .populate('settled', 'username profilePicture');
+      .populate('payer', 'username profilePicture firstName lastName')
+      .populate('participants', 'username profilePicture firstName lastName')
+      .populate('settled', 'username profilePicture firstName lastName');
 
     res.status(200).json(populated);
   } catch (error) {

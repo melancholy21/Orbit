@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Orbit } from 'lucide-react';
+import { Orbit, Sun, Moon } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { register, reset } from '../features/auth/authSlice';
+import { useTheme } from '../components/ThemeProvider';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 
 const Register = () => {
+  const { theme, setTheme } = useTheme();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -67,9 +69,30 @@ const Register = () => {
     dispatch(register(userData));
   };
 
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : prev === 'dark' ? 'orbit' : 'light'));
+  };
+
+  const getThemeIcon = () => {
+    if (theme === 'light') return <Sun size={18} />;
+    if (theme === 'dark') return <Moon size={18} />;
+    return <Orbit size={18} className="text-violet-400" />;
+  };
+
   return (
     <div className="flex justify-center items-center min-h-screen relative z-10 p-4">
-      <div className="w-full max-w-[400px] p-8 rounded-2xl border border-blue-500/30 bg-card/30 backdrop-blur-md text-card-foreground shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)]">
+      {/* Floating Theme Switcher */}
+      <button 
+        type="button"
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-2.5 rounded-full border border-border bg-card/60 backdrop-blur-md text-foreground hover:bg-white/10 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1.5"
+        title={`Current Theme: ${theme}. Click to switch.`}
+      >
+        {getThemeIcon()}
+        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{theme}</span>
+      </button>
+
+      <div className="w-full max-w-[400px] p-8 rounded-2xl border border-border/50 bg-card/30 backdrop-blur-md text-card-foreground shadow-lg">
         <div className="flex flex-col items-center mb-6">
           <div className="bg-primary text-primary-foreground p-2 rounded-xl mb-4">
             <Orbit size={24} />

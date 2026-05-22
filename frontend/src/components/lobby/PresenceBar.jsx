@@ -15,17 +15,13 @@ const PresenceBar = ({ users }) => {
   return (
     <div className="py-3">
       <div className="flex items-center gap-2 mb-2 px-1">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className="w-2 h-2 bg-green-500 rounded-full" />
         <span className="text-xs font-medium text-muted-foreground">{users.length} in lobby</span>
       </div>
       <div className="flex items-center gap-3 overflow-x-auto pb-1 px-1 scrollbar-hide">
         {users.map((user) => (
           <div key={user.userId} className="flex flex-col items-center gap-1 shrink-0">
             <div className="relative">
-              {/* Pulse ring for active users */}
-              {user.mode === 'active' && (
-                <div className="absolute inset-0 rounded-full border-2 border-green-500 animate-ping opacity-30" />
-              )}
               <Avatar className={`w-12 h-12 border-2 ${
                 user.mode === 'active' 
                   ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' 
@@ -41,8 +37,8 @@ const PresenceBar = ({ users }) => {
                 user.mode === 'active' ? 'bg-green-500' : 'bg-muted-foreground/40'
               }`} />
             </div>
-            <span className="text-[10px] text-muted-foreground font-medium max-w-[52px] truncate">
-              {user.username}
+            <span className="text-[10px] text-muted-foreground font-medium max-w-[60px] truncate flex items-center gap-0.5 justify-center">
+              {user.isOwner && <span>👑</span>} {user.username}
             </span>
           </div>
         ))}

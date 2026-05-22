@@ -677,9 +677,13 @@ const Hangs = () => {
                       >
                         <Avatar className="w-4 h-4">
                           <AvatarImage src={friend.profilePicture} />
-                          <AvatarFallback className="text-[7px]">{friend.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback className="text-[7px]">
+                            {(friend.firstName || friend.lastName) ? (friend.firstName ? friend.firstName.charAt(0).toUpperCase() : friend.lastName.charAt(0).toUpperCase()) : friend.username?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
-                        {friend.username}
+                        {friend.firstName || friend.lastName 
+                          ? `${friend.firstName || ''} ${friend.lastName || ''}`.trim() 
+                          : friend.username}
                       </button>
                     );
                   })}
