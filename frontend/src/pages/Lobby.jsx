@@ -157,9 +157,9 @@ const Lobby = () => {
         });
         setLikedSongs(data.items?.filter(i => i && i.track).map(i => i.track) || []);
       } catch (err) {
-        // If token is expired or unauthorized, try refreshing it once
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          console.log('Spotify token expired or invalid. Attempting to refresh...');
+        // If token is expired, try refreshing it once
+        if (err.response?.status === 401) {
+          console.log('Spotify token expired. Attempting to refresh...');
           const newToken = await handleRefreshSpotifyToken();
           if (newToken) {
             try {

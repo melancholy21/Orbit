@@ -12,6 +12,23 @@ export const LobbyProvider = ({ children }) => {
   const token = user?.spotifyAccessToken;
   const dispatch = useDispatch();
 
+  const lastToastTime = useRef(0);
+  const lastToastMessage = useRef('');
+
+  const showThrottledToast = (message, type = 'error') => {
+    const now = Date.now();
+    if (now - lastToastTime.current < 4000 && lastToastMessage.current === message) {
+      return;
+    }
+    lastToastTime.current = now;
+    lastToastMessage.current = message;
+    if (type === 'error') {
+      toast.error(message);
+    } else {
+      toast.success(message);
+    }
+  };
+
   const handleRefreshSpotifyToken = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
@@ -40,8 +57,8 @@ export const LobbyProvider = ({ children }) => {
       };
       return await axios(config);
     } catch (err) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        console.log('Spotify token expired or unauthorized in LobbyContext. Refreshing...');
+      if (err.response?.status === 401) {
+        console.log('Spotify token expired in LobbyContext. Refreshing...');
         const newToken = await handleRefreshSpotifyToken();
         if (newToken) {
           const config = {
@@ -154,8 +171,9 @@ export const LobbyProvider = ({ children }) => {
 
         // Robust track end detection:
         // Trigger automatically when the track is paused at the end (within 2 seconds of duration)
+        // We exclude position === 0 to avoid infinite skip loops on playback failures
         const isNearEnd = state.duration > 0 && state.position >= state.duration - 2000;
-        const isEndedState = state.paused && (state.position === 0 || isNearEnd);
+        const isEndedState = state.paused && isNearEnd && state.position > 0;
         if (isEndedState) {
           if (!hasTriggeredEnd.current) {
             hasTriggeredEnd.current = true;
@@ -332,11 +350,11 @@ export const LobbyProvider = ({ children }) => {
         const reason = err.response?.data?.error?.reason;
         const msg = err.response?.data?.error?.message;
         if (err.response?.status === 404 && reason === 'NO_ACTIVE_DEVICE') {
-          toast.error('No active Spotify device found. Please open your Spotify App and play any song first!');
+          showThrottledToast('No active Spotify device found. Please open your Spotify App and play any song first!');
         } else if (msg) {
-          toast.error(`Spotify Playback Error: ${msg}`);
+          showThrottledToast(`Spotify Playback Error: ${msg}`);
         } else {
-          toast.error(`Playback Error: ${err.message}`);
+          showThrottledToast(`Playback Error: ${err.message}`);
         }
       }
     };
