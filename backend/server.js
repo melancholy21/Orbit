@@ -24,13 +24,16 @@ const io = initSocket(httpServer);
 // Security Middleware
 app.use(helmet());
 
-// Rate Limiting (Disabled for development)
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 1000, 
-//   message: 'Too many requests from this IP, please try again later'
-// });
-// app.use('/api', limiter);
+// Rate Limiting (Enabled only in Production)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Trust reverse proxy headers (Render, Vercel, Cloudflare)
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, 
+    message: 'Too many requests from this IP, please try again later'
+  });
+  app.use('/api', limiter);
+}
 
 // Middleware
 app.use(cors());
