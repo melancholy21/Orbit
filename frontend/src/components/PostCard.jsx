@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Share } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Share, Globe, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -11,12 +11,18 @@ import { Input } from '../components/ui/input';
 import { Separator } from '../components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 
-const PostCard = ({ post }) => {
+const PostCard = ({ post: initialPost }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  
+  const [post, setPost] = useState(initialPost);
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState('');
+
+  useEffect(() => {
+    setPost(initialPost);
+  }, [initialPost]);
 
   // Track which comment we are replying to
   const [replyingTo, setReplyingTo] = useState(null);
@@ -25,30 +31,56 @@ const PostCard = ({ post }) => {
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [editVisibility, setEditVisibility] = useState('friends');
   const [editRemoveImage, setEditRemoveImage] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
-  const isLiked = user && post.likes.includes(user._id);
+  const sharingFriend = post.shares?.find(s => {
+    const sId = typeof s === 'object' ? s._id : s;
+    return sId === user?._id || user?.friends?.includes(sId);
+  });
+  
+  const sharingFriendId = sharingFriend ? (typeof sharingFriend === 'object' ? sharingFriend._id : sharingFriend) : null;
+  const isRepost = sharingFriendId && post.author?._id !== sharingFriendId;
+
+  const isLiked = user && post.likes?.includes(user._id);
   const isAuthor = user && post.author?._id === user._id;
 
-  const handleLike = () => {
-    dispatch(toggleLike(post._id));
+  const handleLike = async () => {
+    try {
+      const res = await dispatch(toggleLike(post._id)).unwrap();
+      setPost(prev => ({ ...prev, likes: res.likes }));
+    } catch (err) {
+      console.error('Failed to toggle like', err);
+    }
   };
 
-  const handleCommentSubmit = (e) => {
+  const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (commentText.trim() !== '') {
-      dispatch(addComment({ postId: post._id, content: commentText }));
-      setCommentText('');
+      try {
+        const res = await dispatch(addComment({ postId: post._id, content: commentText })).unwrap();
+        setPost(prev => {
+          const exists = prev.comments.some(c => c._id === res.comment._id);
+          if (exists) return prev;
+          return { ...prev, comments: [...prev.comments, res.comment] };
+        });
+        setCommentText('');
+      } catch (err) {
+        console.error('Failed to add comment', err);
+      }
     }
   };
 
   const handleDeletePost = () => {
-    dispatch(deletePost(post._id));
+    if (window.confirm('Are you sure you want to delete this post?')) {
+      dispatch(deletePost(post._id));
+    }
   };
 
   const handleStartEdit = () => {
     setEditText(post.content);
+    setEditVisibility(post.visibility || 'friends');
     setEditRemoveImage(false);
     setIsEditing(true);
   };
@@ -59,37 +91,66 @@ const PostCard = ({ post }) => {
     setEditRemoveImage(false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     const contentChanged = editText.trim() !== post.content;
     const imageChanged = editRemoveImage && post.image;
+    const visibilityChanged = editVisibility !== (post.visibility || 'friends');
 
-    if (editText.trim() && (contentChanged || imageChanged)) {
-      dispatch(editPost({
-        postId: post._id,
-        content: editText.trim(),
-        ...(imageChanged ? { image: '' } : {})
-      }));
+    if (editText.trim() && (contentChanged || imageChanged || visibilityChanged)) {
+      try {
+        const updatedPost = await dispatch(editPost({
+          postId: post._id,
+          content: editText.trim(),
+          visibility: editVisibility,
+          ...(imageChanged ? { image: '' } : {})
+        })).unwrap();
+        setPost(updatedPost);
+      } catch (err) {
+        console.error('Failed to save edit', err);
+      }
     }
     setIsEditing(false);
     setEditText('');
     setEditRemoveImage(false);
   };
 
-  const handleReplySubmit = (e, commentId) => {
+  const handleReplySubmit = async (e, commentId) => {
     e.preventDefault();
     if (replyText.trim() !== '') {
-      dispatch(addReply({ commentId, content: replyText }));
-      setReplyText('');
-      setReplyingTo(null);
+      try {
+        const res = await dispatch(addReply({ commentId, content: replyText })).unwrap();
+        setPost(prev => ({
+          ...prev,
+          comments: prev.comments.map(c => c._id === commentId ? res : c)
+        }));
+        setReplyText('');
+        setReplyingTo(null);
+      } catch (err) {
+        console.error('Failed to reply', err);
+      }
     }
   };
 
-  const handleShare = () => {
-    dispatch(sharePost(post._id));
+  const handleShare = async () => {
+    try {
+      const res = await dispatch(sharePost(post._id)).unwrap();
+      setPost(prev => ({ ...prev, shares: res.shares }));
+    } catch (err) {
+      console.error('Failed to share post', err);
+    }
   };
 
   return (
     <Card className="w-full mb-6 overflow-hidden border-blue-500/30 shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)] bg-card/30 backdrop-blur-md">
+      {isRepost && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground px-6 pt-3">
+          <Share size={12} className="text-green-500" />
+          <span className="font-semibold text-green-400 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${sharingFriendId}`)}>
+            {sharingFriendId === user?._id ? 'You' : (typeof sharingFriend === 'object' && (sharingFriend.firstName || sharingFriend.lastName) ? `${sharingFriend.firstName || ''} ${sharingFriend.lastName || ''}`.trim() : (typeof sharingFriend === 'object' ? sharingFriend.username : 'A friend'))}
+          </span>{' '}
+          reposted
+        </div>
+      )}
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div 
           className="flex flex-row items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
@@ -112,9 +173,21 @@ const PostCard = ({ post }) => {
                 <span className="text-xs text-muted-foreground font-medium">@{post.author?.username}</span>
               )}
             </div>
-            <span className="text-[10px] text-muted-foreground mt-1">
-              {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-            </span>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 font-medium">
+              <span>{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</span>
+              <span>•</span>
+              {post.visibility === 'public' ? (
+                <span className="flex items-center gap-0.5" title="Public">
+                  <Globe size={11} />
+                  <span>Public</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-0.5" title="Friends Only">
+                  <Users size={11} />
+                  <span>Friends</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -148,25 +221,46 @@ const PostCard = ({ post }) => {
               className="w-full min-h-[80px] bg-background/60 text-foreground text-sm p-3 rounded-xl border border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none outline-none"
               autoFocus
             />
-            <div className="flex items-center gap-2 justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCancelEdit}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} />
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveEdit}
-                disabled={!editText.trim() || (editText.trim() === post.content && !editRemoveImage)}
-                className="gap-1.5"
-              >
-                <Check size={14} />
-                Save
-              </Button>
+            <div className="flex items-center justify-between">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground text-xs gap-1.5 h-8 border border-border/40 rounded-lg px-2.5 cursor-pointer">
+                    {editVisibility === 'public' ? <Globe size={14} /> : <Users size={14} />}
+                    <span className="capitalize">{editVisibility}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setEditVisibility('friends')} className="gap-2 cursor-pointer">
+                    <Users size={14} />
+                    <span>Friends</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditVisibility('public')} className="gap-2 cursor-pointer">
+                    <Globe size={14} />
+                    <span>Public</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <X size={14} />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={!editText.trim() || (editText.trim() === post.content && !editRemoveImage && editVisibility === (post.visibility || 'friends'))}
+                  className="gap-1.5"
+                >
+                  <Check size={14} />
+                  Save
+                </Button>
+              </div>
             </div>
           </div>
         ) : (

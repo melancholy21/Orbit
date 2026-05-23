@@ -74,11 +74,12 @@ export const deletePost = createAsyncThunk('posts/delete', async (postId, thunkA
   }
 });
 
-export const editPost = createAsyncThunk('posts/edit', async ({ postId, content, image }, thunkAPI) => {
+export const editPost = createAsyncThunk('posts/edit', async ({ postId, content, image, visibility }, thunkAPI) => {
   try {
     const token = thunkAPI.getState().auth.user.token;
     const data = { content };
     if (image !== undefined) data.image = image;
+    if (visibility !== undefined) data.visibility = visibility;
     return await postService.editPost(postId, data, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();

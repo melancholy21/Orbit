@@ -32,6 +32,8 @@ const MediaPlayer = () => {
     skipTrack
   } = useLobby();
 
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
   if (!currentTrack && queue.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 px-4">
@@ -49,7 +51,18 @@ const MediaPlayer = () => {
     <div className="relative">
       {/* Player Visualizer */}
       {currentTrack && (
-        <div className="aspect-video bg-gradient-to-br from-[#1DB954]/20 to-black rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 border border-border/20">
+        <div className="aspect-video bg-gradient-to-br from-[#1DB954]/20 to-black rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 border border-border/20 relative">
+          {isMobile && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.open('spotify://', '_blank')}
+              className="absolute top-2 right-2 h-7 text-[10px] px-2.5 rounded-full bg-black/40 border-[#1DB954]/30 hover:bg-[#1DB954]/25 hover:text-[#1DB954] text-[#1DB954] font-medium"
+            >
+              Open Spotify App
+            </Button>
+          )}
+
           {!isReady ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-[#1DB954]" size={32} />
@@ -70,9 +83,12 @@ const MediaPlayer = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3">
-              <Music className="text-[#1DB954]" size={32} />
-              <p className="text-sm text-muted-foreground font-medium">Ready to play</p>
+            <div className="flex flex-col items-center gap-3 text-center px-4">
+              <Music className="text-[#1DB954] animate-pulse" size={32} />
+              <div className="mt-2">
+                <h3 className="text-sm font-semibold text-foreground line-clamp-2">{currentTrack.title}</h3>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">Playing via Spotify Connect</p>
+              </div>
             </div>
           )}
         </div>

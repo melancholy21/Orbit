@@ -77,6 +77,7 @@ const Lobby = () => {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [queueSubTab, setQueueSubTab] = useState('library'); // 'library' | 'queue' | 'paste'
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const volumeRef = useRef(null);
 
   useEffect(() => {
@@ -107,6 +108,12 @@ const Lobby = () => {
     if (token) {
       dispatch(updateSpotifyToken(token));
       setSearchParams({});
+      
+      // Auto-popup setup guide for mobile users upon redirecting back
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        setShowHelpModal(true);
+      }
     }
     const err = searchParams.get('error');
     if (err) {
@@ -139,7 +146,8 @@ const Lobby = () => {
         setLikedSongs(data.items?.filter(i => i && i.track).map(i => i.track) || []);
       } catch (err) {
         console.error('Failed to fetch liked songs', err);
-        toast.error('Failed to fetch liked songs from Spotify.');
+        const errMsg = err.response?.data?.error?.message || err.message || 'Unknown error';
+        toast.error(`Failed to fetch liked songs from Spotify: ${errMsg}`);
       } finally {
         setLibraryLoading(false);
       }
@@ -461,13 +469,13 @@ const Lobby = () => {
                 )}
               </button>
 
-              {/* Headphones Circle */}
+              {/* Liked Songs Circle */}
               <button
                 onClick={() => { setActiveTab('queue'); setQueueSubTab('library'); }}
                 className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-muted-foreground active:text-foreground active:scale-90 transition-all cursor-pointer hover:bg-white/10 hover:border-white/20"
                 title="Liked Songs"
               >
-                <Headphones size={20} />
+                <Heart size={20} />
               </button>
             </div>
           </div>
@@ -617,6 +625,58 @@ const Lobby = () => {
           </button>
         ))}
       </div>
+
+      {/* ─── Playback Guide Modal ─── */}
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-zinc-900/95 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowHelpModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400">
+                <Headphones size={20} />
+              </div>
+              <h3 className="text-base font-bold text-foreground">Spotify Setup Guide</h3>
+            </div>
+            
+            <div className="space-y-4 text-xs leading-relaxed text-muted-foreground">
+              <div>
+                <h4 className="font-bold text-foreground flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wider text-violet-400">
+                  💻 Desktop (Mac / Windows)
+                </h4>
+                <p>
+                  Orbit plays audio directly in your browser. Just make sure your Spotify Premium account is connected and you're ready!
+                </p>
+              </div>
+
+              <div className="border-t border-white/5 pt-3">
+                <h4 className="font-bold text-foreground flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wider text-emerald-400">
+                  📱 Mobile (iOS / Android)
+                </h4>
+                <p className="mb-2">
+                  Spotify restricts web browser player streaming on phones. To hear the music:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-[11px]">
+                  <li>Open the native <strong>Spotify App</strong> on your phone.</li>
+                  <li>Play <strong>any song</strong> for 1 second (then pause it) to register your device as active on Spotify's servers.</li>
+                  <li>Return to Orbit! The music will stream automatically in the background through your Spotify App!</li>
+                </ol>
+              </div>
+            </div>
+
+            <Button 
+              onClick={() => setShowHelpModal(false)}
+              className="w-full mt-6 h-10 rounded-full bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Got it, let's play!
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

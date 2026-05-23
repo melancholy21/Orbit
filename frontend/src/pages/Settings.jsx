@@ -83,9 +83,16 @@ const Settings = () => {
     }
   };
 
-  const handleDisconnectSpotify = () => {
-    dispatch(updateUser({ spotifyAccessToken: null }));
-    toast.success('Spotify disconnected.');
+  const handleDisconnectSpotify = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.put('/api/users/me', { spotifyAccessToken: '' }, config);
+      dispatch(updateUser({ spotifyAccessToken: null }));
+      toast.success('Spotify disconnected.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to disconnect Spotify.');
+    }
   };
 
   return (

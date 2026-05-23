@@ -5,7 +5,7 @@ import { onlineUsers } from '../socket.js';
 
 export const createPost = async (req, res, next) => {
   try {
-    const { content, image } = req.body;
+    const { content, image, visibility } = req.body;
 
     if (!content) {
       res.status(400);
@@ -15,7 +15,8 @@ export const createPost = async (req, res, next) => {
     const post = await Post.create({
       author: req.user.id,
       content,
-      image
+      image,
+      visibility: visibility || 'friends'
     });
 
     const populatedPost = await Post.findById(post._id).populate('author', 'username profilePicture firstName lastName');
@@ -27,11 +28,27 @@ export const createPost = async (req, res, next) => {
 
 export const getPosts = async (req, res, next) => {
   try {
+    const friendIds = req.user.friends.map(id => id.toString());
     const followingIds = req.user.following.map(id => id.toString());
-    const authorIds = [req.user.id, ...followingIds];
 
-    const posts = await Post.find({ author: { $in: authorIds } })
+    // Facebook-style visibility rules:
+    // 1. My own posts
+    // 2. Posts authored by my friends (both friends and public visibility)
+    // 3. Posts authored by people I follow that are Public
+    // 4. Posts reposted (shared) by my friends
+    const query = {
+      $or: [
+        { author: req.user.id },
+        { author: { $in: friendIds } },
+        { author: { $in: followingIds }, visibility: 'public' },
+        { shares: { $in: friendIds } },
+        { visibility: 'public' }
+      ]
+    };
+
+    const posts = await Post.find(query)
       .populate('author', 'username profilePicture status location firstName lastName')
+      .populate('shares', 'username profilePicture firstName lastName')
       .populate({
         path: 'comments',
         populate: [
@@ -182,7 +199,7 @@ export const editPost = async (req, res, next) => {
       throw new Error('User not authorized to edit this post');
     }
 
-    const { content, image } = req.body;
+    const { content, image, visibility } = req.body;
     if (!content || !content.trim()) {
       res.status(400);
       throw new Error('Post content cannot be empty');
@@ -192,6 +209,9 @@ export const editPost = async (req, res, next) => {
     // Allow removing or updating image — if image key is present in body, update it
     if (image !== undefined) {
       post.image = image;
+    }
+    if (visibility !== undefined) {
+      post.visibility = visibility;
     }
     await post.save();
 
@@ -248,13 +268,32 @@ export const replyToComment = async (req, res, next) => {
 
 export const getUserPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({
-      $or: [
-        { author: req.params.userId },
-        { shares: req.params.userId }
-      ]
-    })
+    const targetUserId = req.params.userId;
+    const isMe = req.user.id === targetUserId;
+    const isFriend = req.user.friends.some(id => id.toString() === targetUserId);
+
+    let query = {};
+    if (isMe || isFriend) {
+      // Show all posts authored or shared by this user
+      query = {
+        $or: [
+          { author: targetUserId },
+          { shares: targetUserId }
+        ]
+      };
+    } else {
+      // Only show public posts authored or shared by this user
+      query = {
+        $or: [
+          { author: targetUserId, visibility: 'public' },
+          { shares: targetUserId, visibility: 'public' }
+        ]
+      };
+    }
+
+    const posts = await Post.find(query)
       .populate('author', 'username profilePicture status location firstName lastName')
+      .populate('shares', 'username profilePicture firstName lastName')
       .populate({
         path: 'comments',
         populate: [
@@ -274,6 +313,7 @@ export const getPostById = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate('author', 'username profilePicture status location firstName lastName')
+      .populate('shares', 'username profilePicture firstName lastName')
       .populate({
         path: 'comments',
         populate: [

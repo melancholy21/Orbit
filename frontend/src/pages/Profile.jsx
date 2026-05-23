@@ -119,6 +119,10 @@ const Profile = () => {
   };
 
   const handleFollow = async () => {
+    const isCurrentlyFollowing = profile.followers?.includes(user._id);
+    if (isCurrentlyFollowing && !window.confirm('Are you sure you want to unfollow this user?')) {
+      return;
+    }
     try {
       await axios.put(`/api/users/${targetUserId}/follow`, {}, {
         headers: { Authorization: `Bearer ${user.token}` }
@@ -152,6 +156,9 @@ const Profile = () => {
         }));
         toast.success('Friend request accepted');
       } else if (action === 'remove') {
+        if (!window.confirm('Are you sure you want to unfriend this user?')) {
+          return;
+        }
         await axios.delete(`/api/users/friends/${targetUserId}/remove`, config);
         setProfile(prev => ({
           ...prev,

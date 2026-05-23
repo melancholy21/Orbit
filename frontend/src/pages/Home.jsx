@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image as ImageIcon, Send, Loader2, X, Radio } from 'lucide-react';
+import { Image as ImageIcon, Send, Loader2, X, Radio, Globe, Users } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getPosts, createPost, reset } from '../features/posts/postSlice';
 import PostCard from '../components/PostCard';
@@ -9,6 +9,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -25,6 +26,7 @@ const Home = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [lobbyCount, setLobbyCount] = useState(0);
+  const [visibility, setVisibility] = useState('friends');
 
   useEffect(() => {
     if (isError) {
@@ -98,10 +100,11 @@ const Home = () => {
         uploadedImagePath = data.image;
       }
 
-      dispatch(createPost({ content, image: uploadedImagePath }));
+      dispatch(createPost({ content, image: uploadedImagePath, visibility }));
       
       // Reset form
       setContent('');
+      setVisibility('friends');
       removeImage();
     } catch (error) {
       toast.error('Error uploading image');
@@ -177,14 +180,35 @@ const Home = () => {
               onChange={handleImageChange} 
               className="hidden" 
             />
-            <Button 
-              variant="ghost" 
-              className="text-muted-foreground gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ImageIcon size={18} />
-              Photo
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                className="text-muted-foreground gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon size={18} />
+                Photo
+              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground text-xs gap-1.5 h-8 border border-border/40 rounded-lg px-2.5 cursor-pointer">
+                    {visibility === 'public' ? <Globe size={14} /> : <Users size={14} />}
+                    <span className="capitalize">{visibility}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setVisibility('friends')} className="gap-2 cursor-pointer">
+                    <Users size={14} />
+                    <span>Friends</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setVisibility('public')} className="gap-2 cursor-pointer">
+                    <Globe size={14} />
+                    <span>Public</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             
             <Button 
               onClick={handlePostSubmit}

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { useSelector } from 'react-redux';
 import useSocket from '../hooks/useSocket';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const LobbyContext = createContext(null);
 
@@ -14,7 +15,9 @@ export const LobbyProvider = ({ children }) => {
 
   // 1. Socket Connection
   const socketState = useSocket(user?.token, false);
-  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinLobby, isAudioSyncEnabled } = socketState;
+  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinLobby, isAudioSyncEnabled, currentStartedAt } = socketState;
+
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   // Auto-join lobby when Spotify token and Socket connection are present
   useEffect(() => {
@@ -54,6 +57,11 @@ export const LobbyProvider = ({ children }) => {
         playerRef.current = null;
         setPlayer(null);
       }
+      return;
+    }
+
+    if (isMobile) {
+      setIsReady(true);
       return;
     }
 
@@ -124,6 +132,48 @@ export const LobbyProvider = ({ children }) => {
     };
   }, [token]);
 
+  // Fetch track metadata on mobile
+  useEffect(() => {
+    if (!isMobile || !token || !currentTrack?.url) return;
+
+    let trackId = '';
+    if (currentTrack.url.includes('spotify:track:')) {
+      trackId = currentTrack.url.split('spotify:track:')[1];
+    } else if (currentTrack.url.includes('open.spotify.com/track/')) {
+      trackId = currentTrack.url.split('track/')[1].split('?')[0];
+    }
+
+    if (!trackId) return;
+
+    const fetchTrackDetails = async () => {
+      try {
+        const { data } = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCurrentSpotifyTrack({
+          name: data.name,
+          artists: data.artists,
+          album: {
+            images: data.album.images
+          }
+        });
+        setDurationMs(data.duration_ms);
+        
+        // Align progress with current started time
+        if (currentStartedAt) {
+          const elapsed = Date.now() - new Date(currentStartedAt).getTime();
+          setProgressMs(Math.max(0, Math.min(data.duration_ms, elapsed)));
+        }
+      } catch (err) {
+        console.error('Failed to fetch track details on mobile:', err);
+        setDurationMs(180000); // 3 mins default
+        setCurrentSpotifyTrack(null);
+      }
+    };
+
+    fetchTrackDetails();
+  }, [isMobile, token, currentTrack?.url, currentStartedAt]);
+
   // Handle Progress Bar Interval and Track End Fallback
   useEffect(() => {
     // Reset end trigger and progress states when track changes
@@ -162,14 +212,17 @@ export const LobbyProvider = ({ children }) => {
   const lastIsPlaying = useRef(false);
 
   useEffect(() => {
-    if (!isReady || !deviceId || !token) return;
+    if (!isReady || (!isMobile && !deviceId) || !token) return;
 
     if (!isAudioSyncEnabled) {
       // Pause local Spotify playback when sync is disabled
       const pausePlayback = async () => {
         try {
+          const url = deviceId 
+            ? `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`
+            : `https://api.spotify.com/v1/me/player/pause`;
           await axios.put(
-            `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`,
+            url,
             {},
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -196,15 +249,19 @@ export const LobbyProvider = ({ children }) => {
 
             const playWithRetry = async (retries = 2) => {
               try {
+                const url = deviceId 
+                  ? `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`
+                  : `https://api.spotify.com/v1/me/player/play`;
+
                 if (isDifferentTrack) {
                   await axios.put(
-                    `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+                    url,
                     { uris: [currentTrack.url] },
                     { headers: { Authorization: `Bearer ${token}` } }
                   );
                 } else {
                   await axios.put(
-                    `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+                    url,
                     {},
                     { headers: { Authorization: `Bearer ${token}` } }
                   );
@@ -227,8 +284,11 @@ export const LobbyProvider = ({ children }) => {
           }
         } else if (!isPlaying) {
           if (lastIsPlaying.current !== false) {
+            const url = deviceId 
+              ? `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`
+              : `https://api.spotify.com/v1/me/player/pause`;
             await axios.put(
-              `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`,
+              url,
               {},
               { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -237,18 +297,46 @@ export const LobbyProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Spotify Playback Error:', err);
+        const reason = err.response?.data?.error?.reason;
+        const msg = err.response?.data?.error?.message;
+        if (err.response?.status === 404 && reason === 'NO_ACTIVE_DEVICE') {
+          toast.error('No active Spotify device found. Please open your Spotify App and play any song first!');
+        } else if (msg) {
+          toast.error(`Spotify Playback Error: ${msg}`);
+        } else {
+          toast.error(`Playback Error: ${err.message}`);
+        }
       }
     };
 
     syncPlayback();
-  }, [currentTrack?.url, isPlaying, isReady, deviceId, token]);
+  }, [currentTrack?.url, isPlaying, isReady, deviceId, token, isMobile]);
 
   // Handle Volume Synchronization
   useEffect(() => {
+    // 1. Update local browser SDK player immediately if active
     if (player) {
       player.setVolume(isMuted ? 0 : volume);
     }
-  }, [volume, isMuted, player]);
+
+    // 2. Sync to Spotify's servers to adjust whatever Connect device is playing (mobile/desktop app)
+    if (!token) return;
+
+    const targetVolume = Math.round((isMuted ? 0 : volume) * 100);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const url = `https://api.spotify.com/v1/me/player/volume?volume_percent=${targetVolume}`;
+        
+        await axios.put(url, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.warn('Failed to sync Spotify volume:', err.message);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [volume, isMuted, player, token, deviceId]);
 
   const value = {
     ...socketState,

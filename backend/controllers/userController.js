@@ -202,7 +202,7 @@ export const updateProfile = async (req, res, next) => {
       throw new Error('User not found');
     }
 
-    const { bio, location, website, firstName, lastName, isOnboarded, profilePicture } = req.body;
+    const { bio, location, website, firstName, lastName, isOnboarded, profilePicture, spotifyAccessToken } = req.body;
     
     if (bio !== undefined) user.bio = bio;
     if (location !== undefined) user.location = location;
@@ -211,6 +211,7 @@ export const updateProfile = async (req, res, next) => {
     if (lastName !== undefined) user.lastName = lastName;
     if (isOnboarded !== undefined) user.isOnboarded = isOnboarded;
     if (profilePicture !== undefined) user.profilePicture = profilePicture;
+    if (spotifyAccessToken !== undefined) user.spotifyAccessToken = spotifyAccessToken || '';
 
     await user.save();
     
@@ -230,7 +231,8 @@ export const updateProfile = async (req, res, next) => {
       friends: user.friends,
       friendRequestsSent: user.friendRequestsSent,
       friendRequestsReceived: user.friendRequestsReceived,
-      status: user.status
+      status: user.status,
+      spotifyAccessToken: user.spotifyAccessToken
     });
   } catch (error) {
     next(error);
