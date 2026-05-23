@@ -36,7 +36,7 @@ const getMe = async (token) => {
       Authorization: `Bearer ${token}`
     }
   };
-  const response = await axios.get(API_URL + 'me', config);
+  const response = await axios.get(API_URL + 'me?cb=' + Date.now(), config);
   return response.data;
 };
 

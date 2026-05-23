@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { updateSpotifyToken } from '../features/auth/authSlice';
 import useSocket from '../hooks/useSocket';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -9,6 +10,55 @@ const LobbyContext = createContext(null);
 export const LobbyProvider = ({ children }) => {
   const { user } = useSelector((state) => state.auth);
   const token = user?.spotifyAccessToken;
+  const dispatch = useDispatch();
+
+  const handleRefreshSpotifyToken = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const { data } = await axios.get('/api/spotify/refresh_token', config);
+      dispatch(updateSpotifyToken(data.access_token));
+      return data.access_token;
+    } catch (err) {
+      console.error('Failed to refresh Spotify token', err);
+      return null;
+    }
+  };
+
+  const spotifyRequest = async (method, url, data = null, headers = {}) => {
+    try {
+      const activeToken = user?.spotifyAccessToken;
+      if (!activeToken) throw new Error('No Spotify token available');
+      
+      const config = {
+        method,
+        url,
+        data,
+        headers: {
+          ...headers,
+          Authorization: `Bearer ${activeToken}`
+        }
+      };
+      return await axios(config);
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        console.log('Spotify token expired or unauthorized in LobbyContext. Refreshing...');
+        const newToken = await handleRefreshSpotifyToken();
+        if (newToken) {
+          const config = {
+            method,
+            url,
+            data,
+            headers: {
+              ...headers,
+              Authorization: `Bearer ${newToken}`
+            }
+          };
+          return await axios(config);
+        }
+      }
+      throw err;
+    }
+  };
 
   const [hasJoined, setHasJoined] = useState(false);
   const [mode, setMode] = useState('active'); // 'active' | 'lurker'
@@ -147,9 +197,7 @@ export const LobbyProvider = ({ children }) => {
 
     const fetchTrackDetails = async () => {
       try {
-        const { data } = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const { data } = await spotifyRequest('get', `https://api.spotify.com/v1/tracks/${trackId}`);
         setCurrentSpotifyTrack({
           name: data.name,
           artists: data.artists,
@@ -221,11 +269,7 @@ export const LobbyProvider = ({ children }) => {
           const url = deviceId 
             ? `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`
             : `https://api.spotify.com/v1/me/player/pause`;
-          await axios.put(
-            url,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+          await spotifyRequest('put', url, {});
         } catch (err) {
           // Squelch background pause errors
         }
@@ -254,17 +298,9 @@ export const LobbyProvider = ({ children }) => {
                   : `https://api.spotify.com/v1/me/player/play`;
 
                 if (isDifferentTrack) {
-                  await axios.put(
-                    url,
-                    { uris: [currentTrack.url] },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
+                  await spotifyRequest('put', url, { uris: [currentTrack.url] });
                 } else {
-                  await axios.put(
-                    url,
-                    {},
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
+                  await spotifyRequest('put', url, {});
                 }
               } catch (err) {
                 if (retries > 0) {
@@ -287,11 +323,7 @@ export const LobbyProvider = ({ children }) => {
             const url = deviceId 
               ? `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`
               : `https://api.spotify.com/v1/me/player/pause`;
-            await axios.put(
-              url,
-              {},
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await spotifyRequest('put', url, {});
             lastIsPlaying.current = false;
           }
         }
@@ -326,10 +358,7 @@ export const LobbyProvider = ({ children }) => {
     const delayDebounceFn = setTimeout(async () => {
       try {
         const url = `https://api.spotify.com/v1/me/player/volume?volume_percent=${targetVolume}`;
-        
-        await axios.put(url, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await spotifyRequest('put', url, {});
       } catch (err) {
         console.warn('Failed to sync Spotify volume:', err.message);
       }

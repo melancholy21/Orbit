@@ -134,17 +134,45 @@ const Lobby = () => {
     }
   }, [dispatch, navigate]);
 
+  const handleRefreshSpotifyToken = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const { data } = await axios.get('/api/spotify/refresh_token', config);
+      dispatch(updateSpotifyToken(data.access_token));
+      return data.access_token;
+    } catch (err) {
+      console.error('Failed to refresh Spotify token', err);
+      return null;
+    }
+  };
+
   // Fetch Spotify Liked Songs on token update or join
   useEffect(() => {
     if (!user?.spotifyAccessToken) return;
-    const fetchLikedSongs = async () => {
+    const fetchLikedSongs = async (tokenToUse = user.spotifyAccessToken) => {
       setLibraryLoading(true);
       try {
         const { data } = await axios.get('https://api.spotify.com/v1/me/tracks?limit=50', {
-          headers: { Authorization: `Bearer ${user.spotifyAccessToken}` }
+          headers: { Authorization: `Bearer ${tokenToUse}` }
         });
         setLikedSongs(data.items?.filter(i => i && i.track).map(i => i.track) || []);
       } catch (err) {
+        // If token is expired or unauthorized, try refreshing it once
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          console.log('Spotify token expired or invalid. Attempting to refresh...');
+          const newToken = await handleRefreshSpotifyToken();
+          if (newToken) {
+            try {
+              const { data } = await axios.get('https://api.spotify.com/v1/me/tracks?limit=50', {
+                headers: { Authorization: `Bearer ${newToken}` }
+              });
+              setLikedSongs(data.items?.filter(i => i && i.track).map(i => i.track) || []);
+              return;
+            } catch (retryErr) {
+              console.error('Failed to fetch liked songs after token refresh', retryErr);
+            }
+          }
+        }
         console.error('Failed to fetch liked songs', err);
         const errMsg = err.response?.data?.error?.message || err.message || 'Unknown error';
         toast.error(`Failed to fetch liked songs from Spotify: ${errMsg}`);
