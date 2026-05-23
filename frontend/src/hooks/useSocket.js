@@ -84,18 +84,18 @@ const useSocket = (token, autoJoin = false) => {
     });
 
     return () => {
-      socket.emit('leaveLobby');
+      socket.emit('leaveRoom');
       socket.disconnect();
       socketRef.current = null;
     };
   }, [token, autoJoin]);
 
-  const joinLobby = useCallback((mode = 'active') => {
-    socketRef.current?.emit('joinLobby', { mode });
+  const joinRoom = useCallback((roomId) => {
+    socketRef.current?.emit('joinRoom', { roomId });
   }, []);
 
-  const leaveLobby = useCallback(() => {
-    socketRef.current?.emit('leaveLobby');
+  const leaveRoom = useCallback(() => {
+    socketRef.current?.emit('leaveRoom');
     setMessages([]);
     setQueue([]);
     setLobbyUsers([]);
@@ -172,8 +172,8 @@ const useSocket = (token, autoJoin = false) => {
     sleepWarning,
     setSleepWarning,
     repeatMode,
-    joinLobby,
-    leaveLobby,
+    joinRoom,
+    leaveRoom,
     updateMode,
     sendMessage,
     addToQueue,

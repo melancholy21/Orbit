@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const lobbyMessageSchema = new mongoose.Schema({
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room',
+    required: false
+  },
   sender: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -15,6 +20,7 @@ const lobbyMessageSchema = new mongoose.Schema({
 
 // Auto-delete messages older than 24 hours
 lobbyMessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+lobbyMessageSchema.index({ roomId: 1 });
 
 const LobbyMessage = mongoose.model('LobbyMessage', lobbyMessageSchema);
 export default LobbyMessage;

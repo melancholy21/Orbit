@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Share, Globe, Users } from 'lucide-react';
+import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Repeat2, Globe, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +44,10 @@ const PostCard = ({ post: initialPost }) => {
   const isRepost = sharingFriendId && post.author?._id !== sharingFriendId;
 
   const isLiked = user && post.likes?.includes(user._id);
+  const hasReposted = user && post.shares?.some(s => {
+    const sId = typeof s === 'object' ? s._id : s;
+    return sId === user._id;
+  });
   const isAuthor = user && post.author?._id === user._id;
 
   const handleLike = async () => {
@@ -144,7 +148,7 @@ const PostCard = ({ post: initialPost }) => {
     <Card className="w-full mb-6 overflow-hidden border-blue-500/30 shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)] bg-card/30 backdrop-blur-md">
       {isRepost && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground px-6 pt-3">
-          <Share size={12} className="text-green-500" />
+          <Repeat2 size={12} className="text-green-500" />
           <span className="font-semibold text-green-400 hover:underline cursor-pointer" onClick={() => navigate(`/profile/${sharingFriendId}`)}>
             {sharingFriendId === user?._id ? 'You' : (typeof sharingFriend === 'object' && (sharingFriend.firstName || sharingFriend.lastName) ? `${sharingFriend.firstName || ''} ${sharingFriend.lastName || ''}`.trim() : (typeof sharingFriend === 'object' ? sharingFriend.username : 'A friend'))}
           </span>{' '}
@@ -169,9 +173,6 @@ const PostCard = ({ post: initialPost }) => {
                   ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim()
                   : post.author?.username}
               </span>
-              {(post.author?.firstName || post.author?.lastName) && (
-                <span className="text-xs text-muted-foreground font-medium">@{post.author?.username}</span>
-              )}
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 font-medium">
               <span>{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</span>
@@ -353,11 +354,14 @@ const PostCard = ({ post: initialPost }) => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleShare}
-              className="text-muted-foreground hover:text-green-500 transition-colors"
+              className={`transition-colors ${hasReposted ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
+              title={hasReposted ? "Undo Repost" : "Repost"}
             >
-              <Share size={20} />
+              <Repeat2 size={20} className={hasReposted ? "stroke-[2.5]" : ""} />
             </button>
-            <span className="text-sm font-medium text-muted-foreground">{post.shares?.length || 0}</span>
+            <span className={`text-sm font-medium transition-colors ${hasReposted ? 'text-green-500 font-semibold' : 'text-muted-foreground'}`}>
+              {post.shares?.length || 0}
+            </span>
           </div>
         </div>
 

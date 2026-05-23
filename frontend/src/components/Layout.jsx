@@ -17,6 +17,22 @@ const Layout = () => {
   const { socket, currentTrack, isConnected, hasJoined, progressMs, durationMs, isPlaying } = useLobby();
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+
+  const fetchUnreadMessagesCount = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const res = await axios.get(`/api/messages/conversations`, config);
+      const unreadConvs = res.data.filter(conv => 
+        conv.lastMessage && 
+        conv.lastMessage.sender !== user?._id && 
+        !conv.lastMessage.readBy.includes(user?._id)
+      ).length;
+      setUnreadMsgCount(unreadConvs);
+    } catch (err) {
+      console.error('Failed to fetch unread messages count', err);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -39,11 +55,29 @@ const Layout = () => {
   }, [user, navigate]);
 
   useEffect(() => {
+    if (user?.token) {
+      fetchUnreadMessagesCount();
+    }
+  }, [location.pathname, user?.token, user?._id]);
+
+  useEffect(() => {
     if (!socket) return;
     const handleNewNotif = () => setUnreadCount(prev => prev + 1);
     socket.on('newNotification', handleNewNotif);
     return () => socket.off('newNotification', handleNewNotif);
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewMessage = (msg) => {
+      const isViewingThisChat = location.pathname === `/messages/${msg.sender._id}`;
+      if (!isViewingThisChat) {
+        fetchUnreadMessagesCount();
+      }
+    };
+    socket.on('newPrivateMessage', handleNewMessage);
+    return () => socket.off('newPrivateMessage', handleNewMessage);
+  }, [socket, location.pathname, user?.token, user?._id]);
 
   // Reset count if we visit notifications page
   useEffect(() => {
@@ -96,8 +130,8 @@ const Layout = () => {
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-destructive rounded-full flex items-center justify-center border-2 border-background">
-                <span className="text-[8px] font-bold text-destructive-foreground">
+              <div className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] bg-destructive rounded-full flex items-center justify-center border border-background">
+                <span className="text-[9px] font-bold text-destructive-foreground">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               </div>
@@ -136,10 +170,19 @@ const Layout = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all relative ${isActive ? 'text-primary scale-110' : 'text-muted-foreground hover:text-primary'
                 }`}
             >
-              <Icon size={24} />
+              <div className="relative">
+                <Icon size={24} />
+                {item.label === 'Messages' && unreadMsgCount > 0 && (
+                  <div className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] bg-destructive rounded-full flex items-center justify-center border border-background animate-pulse">
+                    <span className="text-[9px] font-bold text-destructive-foreground">
+                      {unreadMsgCount > 9 ? '9+' : unreadMsgCount}
+                    </span>
+                  </div>
+                )}
+              </div>
               <span className="text-[10px] font-medium">{item.label}</span>
             </button>
           );

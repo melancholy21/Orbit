@@ -2,23 +2,10 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
 import LobbyMessage from './models/LobbyMessage.js';
+import Room from './models/Room.js';
 
 // In-memory global online users
 export const onlineUsers = new Map(); // userId -> socket.id
-
-// In-memory lobby state
-const lobbyUsers = new Map(); // socket.id -> { userId, username, ... }
-let lobbyOwnerId = null;
-let mediaQueue = [];
-let currentTrackIndex = -1;
-let currentStartedAt = null;
-let isPlaying = false;
-let lastAdvancedAt = 0;
-let repeatMode = 'off'; // 'off' | 'track' | 'queue'
-
-// Sleep timer: 30 minutes of inactivity
-const SLEEP_TIMEOUT = 30 * 60 * 1000;
-const sleepTimers = new Map();
 
 const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -55,73 +42,56 @@ const initSocket = (httpServer) => {
     // Track online user
     onlineUsers.set(socket.user._id, socket.id);
 
-    // ============ PRESENCE ============
+    // ============ ROOM PRESENCE ============
 
-    socket.on('joinLobby', ({ mode = 'active' } = {}) => {
-      const isFirst = lobbyUsers.size === 0;
-      if (isFirst || !lobbyOwnerId) {
-        lobbyOwnerId = socket.id;
-      }
+    socket.on('joinRoom', async ({ roomId }) => {
+      try {
+        socket.join(roomId);
+        socket.roomId = roomId;
 
-      const userData = {
-        socketId: socket.id,
-        userId: socket.user._id,
-        username: socket.user.username,
-        profilePicture: socket.user.profilePicture,
-        mode, // 'active' or 'lurker'
-        joinedAt: new Date(),
-        lastActivity: new Date(),
-        isOwner: lobbyOwnerId === socket.id
-      };
+        // Add user to Room participants list in database
+        const room = await Room.findByIdAndUpdate(
+          roomId,
+          { $addToSet: { participants: socket.user._id } },
+          { new: true }
+        ).populate('participants', 'username profilePicture firstName lastName');
 
-      lobbyUsers.set(socket.id, userData);
-      socket.join('lobby');
+        if (!room) return;
 
-      // Reset sleep timer
-      resetSleepTimer(socket, io);
+        // Broadcast presence updates to other room members
+        io.to(roomId).emit('presenceUpdate', room.participants);
 
-      // Broadcast updated presence
-      io.to('lobby').emit('presenceUpdate', getLobbyUsersList());
+        // Send current state to the joining user
+        socket.emit('lobbyState', {
+          users: room.participants,
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt ? room.currentStartedAt.toISOString() : null,
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode,
+          ownerId: room.owner
+        });
 
-      // Send current state to the joining user
-      socket.emit('lobbyState', {
-        users: getLobbyUsersList(),
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt ? currentStartedAt.toISOString() : null,
-        isPlaying,
-        repeatMode
-      });
+        // Send recent chat history for this specific room
+        const messages = await LobbyMessage.find({ roomId })
+          .sort({ createdAt: -1 })
+          .limit(50)
+          .populate('sender', 'username profilePicture');
 
-      // Send recent chat history (last 50 messages)
-      LobbyMessage.find()
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .populate('sender', 'username profilePicture')
-        .then(messages => {
-          socket.emit('chatHistory', messages.reverse());
-        })
-        .catch(() => {});
-    });
-
-    socket.on('updateMode', ({ mode }) => {
-      const user = lobbyUsers.get(socket.id);
-      if (user) {
-        user.mode = mode;
-        user.lastActivity = new Date();
-        resetSleepTimer(socket, io);
-        io.to('lobby').emit('presenceUpdate', getLobbyUsersList());
+        socket.emit('chatHistory', messages.reverse());
+      } catch (err) {
+        console.error('Error joining room socket:', err);
       }
     });
 
-    socket.on('leaveLobby', () => {
-      handleLeave(socket, io);
+    socket.on('leaveRoom', async () => {
+      await handleLeaveRoom(socket, io);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`❌ ${socket.user.username} disconnected`);
       onlineUsers.delete(socket.user._id);
-      handleLeave(socket, io);
+      await handleLeaveRoom(socket, io);
     });
 
     // ============ PRIVATE MESSAGING & NOTIFS ============
@@ -158,26 +128,39 @@ const initSocket = (httpServer) => {
       }
     });
 
-    // ============ CHAT ============
+    // Send lobby invite notification to a friend
+    socket.on('sendLobbyInvite', (data) => {
+      const { receiverId, roomId, roomName } = data;
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('lobbyInvite', {
+          sender: {
+            _id: socket.user._id,
+            username: socket.user.username,
+            profilePicture: socket.user.profilePicture
+          },
+          roomId,
+          roomName
+        });
+      }
+    });
+
+    // ============ ROOM CHAT ============
 
     socket.on('sendMessage', async ({ text }) => {
-      if (!text || !text.trim()) return;
-
-      const user = lobbyUsers.get(socket.id);
-      if (user) {
-        user.lastActivity = new Date();
-        resetSleepTimer(socket, io);
-      }
+      const roomId = socket.roomId;
+      if (!roomId || !text || !text.trim()) return;
 
       try {
         const msg = await LobbyMessage.create({
+          roomId,
           sender: socket.user._id,
           text: text.trim()
         });
 
         const populated = await msg.populate('sender', 'username profilePicture');
 
-        io.to('lobby').emit('newMessage', {
+        io.to(roomId).emit('newMessage', {
           _id: populated._id,
           sender: populated.sender,
           text: populated.text,
@@ -190,199 +173,286 @@ const initSocket = (httpServer) => {
 
     // ============ MEDIA QUEUE ============
 
-    socket.on('addToQueue', ({ url, title }) => {
-      if (!url) return;
+    socket.on('addToQueue', async ({ url, title }) => {
+      const roomId = socket.roomId;
+      if (!roomId || !url) return;
 
-      const user = lobbyUsers.get(socket.id);
-      if (user) {
-        user.lastActivity = new Date();
-        resetSleepTimer(socket, io);
-      }
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) return;
 
-      const item = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-        url,
-        title: title || url,
-        addedBy: {
-          userId: socket.user._id,
-          username: socket.user.username
-        },
-        addedAt: new Date()
-      };
+        const item = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          url,
+          title: title || url,
+          addedBy: {
+            userId: socket.user._id,
+            username: socket.user.username
+          },
+          addedAt: new Date()
+        };
 
-      mediaQueue.push(item);
+        room.queue.push(item);
 
-      // If nothing is playing, start this track
-      if (currentTrackIndex === -1 || !isPlaying) {
-        currentTrackIndex = mediaQueue.length - 1;
-        currentStartedAt = new Date();
-        isPlaying = true;
-      }
-
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying
-      });
-    });
-
-    socket.on('skipTrack', () => {
-      if (mediaQueue.length === 0) return;
-
-      if (currentTrackIndex < mediaQueue.length - 1) {
-        currentTrackIndex++;
-        currentStartedAt = new Date();
-        isPlaying = true;
-      } else {
-        // End of queue
-        isPlaying = false;
-        currentStartedAt = null;
-      }
-
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying
-      });
-    });
-
-    socket.on('previousTrack', () => {
-      if (mediaQueue.length === 0) return;
-
-      if (currentTrackIndex > 0) {
-        currentTrackIndex--;
-        currentStartedAt = new Date();
-        isPlaying = true;
-      }
-
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying
-      });
-    });
-
-    socket.on('togglePlay', () => {
-      if (mediaQueue.length === 0 || currentTrackIndex === -1) return;
-      
-      isPlaying = !isPlaying;
-      
-      // If we are resuming, we should ideally adjust currentStartedAt, but for simplicity we just broadcast isPlaying
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying
-      });
-    });
-
-    socket.on('trackEnded', () => {
-      // Debounce checks to prevent rapid skips if multiple clients call it
-      const now = Date.now();
-      if (now - lastAdvancedAt < 4000) return;
-      lastAdvancedAt = now;
-
-      if (repeatMode === 'track') {
-        // loop 1 time
-        currentStartedAt = new Date();
-        isPlaying = true;
-      } else if (currentTrackIndex < mediaQueue.length - 1) {
-        currentTrackIndex++;
-        currentStartedAt = new Date();
-        isPlaying = true;
-      } else if (repeatMode === 'queue') {
-        // loop entirely
-        currentTrackIndex = 0;
-        currentStartedAt = new Date();
-        isPlaying = true;
-      } else {
-        isPlaying = false;
-        currentStartedAt = null;
-      }
-
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying,
-        repeatMode
-      });
-    });
-
-    socket.on('requestSync', () => {
-      socket.emit('syncResponse', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying,
-        repeatMode
-      });
-    });
-
-    socket.on('clearQueue', () => {
-      mediaQueue = [];
-      currentTrackIndex = -1;
-      currentStartedAt = null;
-      isPlaying = false;
-
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: null,
-        isPlaying,
-        repeatMode
-      });
-    });
-
-    socket.on('shuffleQueue', () => {
-      if (mediaQueue.length <= 1) return;
-      
-      const currentTrack = mediaQueue[currentTrackIndex];
-      const remainingTracks = mediaQueue.filter((_, idx) => idx !== currentTrackIndex);
-      
-      for (let i = remainingTracks.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [remainingTracks[i], remainingTracks[j]] = [remainingTracks[j], remainingTracks[i]];
-      }
-      
-      mediaQueue = currentTrack ? [currentTrack, ...remainingTracks] : remainingTracks;
-      currentTrackIndex = currentTrack ? 0 : -1;
-      
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying,
-        repeatMode
-      });
-    });
-
-    socket.on('toggleRepeat', () => {
-      if (repeatMode === 'off') {
-        repeatMode = 'track';
-      } else if (repeatMode === 'track') {
-        repeatMode = 'queue';
-      } else {
-        repeatMode = 'off';
-      }
-      
-      io.to('lobby').emit('queueUpdate', {
-        queue: mediaQueue,
-        currentTrackIndex,
-        currentStartedAt: currentStartedAt?.toISOString(),
-        isPlaying,
-        repeatMode
-      });
-    });
-
-    socket.on('activateAudioSync', () => {
-      for (const [sid, userData] of lobbyUsers) {
-        if (userData.userId === socket.user._id && sid !== socket.id) {
-          io.to(sid).emit('deactivateAudioSync');
+        if (room.currentTrackIndex === -1 || !room.isPlaying) {
+          room.currentTrackIndex = room.queue.length - 1;
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
         }
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying
+        });
+      } catch (err) {
+        console.error('Error adding to queue:', err);
+      }
+    });
+
+    socket.on('skipTrack', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room || room.queue.length === 0) return;
+
+        if (room.currentTrackIndex < room.queue.length - 1) {
+          room.currentTrackIndex++;
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
+        } else {
+          room.isPlaying = false;
+          room.currentStartedAt = null;
+        }
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying
+        });
+      } catch (err) {
+        console.error('Error skipping track:', err);
+      }
+    });
+
+    socket.on('previousTrack', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room || room.queue.length === 0) return;
+
+        if (room.currentTrackIndex > 0) {
+          room.currentTrackIndex--;
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
+        }
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying
+        });
+      } catch (err) {
+        console.error('Error going to previous track:', err);
+      }
+    });
+
+    socket.on('togglePlay', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room || room.queue.length === 0 || room.currentTrackIndex === -1) return;
+
+        room.isPlaying = !room.isPlaying;
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying
+        });
+      } catch (err) {
+        console.error('Error toggling play:', err);
+      }
+    });
+
+    socket.on('trackEnded', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) return;
+
+        if (room.repeatMode === 'track') {
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
+        } else if (room.currentTrackIndex < room.queue.length - 1) {
+          room.currentTrackIndex++;
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
+        } else if (room.repeatMode === 'queue') {
+          room.currentTrackIndex = 0;
+          room.currentStartedAt = new Date();
+          room.isPlaying = true;
+        } else {
+          room.isPlaying = false;
+          room.currentStartedAt = null;
+        }
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode
+        });
+      } catch (err) {
+        console.error('Error on track ended:', err);
+      }
+    });
+
+    socket.on('requestSync', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) return;
+
+        socket.emit('syncResponse', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode
+        });
+      } catch (err) {
+        console.error('Error syncing:', err);
+      }
+    });
+
+    socket.on('clearQueue', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) return;
+
+        room.queue = [];
+        room.currentTrackIndex = -1;
+        room.currentStartedAt = null;
+        room.isPlaying = false;
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: null,
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode
+        });
+      } catch (err) {
+        console.error('Error clearing queue:', err);
+      }
+    });
+
+    socket.on('shuffleQueue', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room || room.queue.length <= 1) return;
+
+        const currentTrack = room.queue[room.currentTrackIndex];
+        const remainingTracks = room.queue.filter((_, idx) => idx !== room.currentTrackIndex);
+
+        for (let i = remainingTracks.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [remainingTracks[i], remainingTracks[j]] = [remainingTracks[j], remainingTracks[i]];
+        }
+
+        room.queue = currentTrack ? [currentTrack, ...remainingTracks] : remainingTracks;
+        room.currentTrackIndex = currentTrack ? 0 : -1;
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode
+        });
+      } catch (err) {
+        console.error('Error shuffling queue:', err);
+      }
+    });
+
+    socket.on('toggleRepeat', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) return;
+
+        if (room.repeatMode === 'off') {
+          room.repeatMode = 'track';
+        } else if (room.repeatMode === 'track') {
+          room.repeatMode = 'queue';
+        } else {
+          room.repeatMode = 'off';
+        }
+
+        await room.save();
+
+        io.to(roomId).emit('queueUpdate', {
+          queue: room.queue,
+          currentTrackIndex: room.currentTrackIndex,
+          currentStartedAt: room.currentStartedAt?.toISOString(),
+          isPlaying: room.isPlaying,
+          repeatMode: room.repeatMode
+        });
+      } catch (err) {
+        console.error('Error toggling repeat:', err);
+      }
+    });
+
+    socket.on('activateAudioSync', async () => {
+      const roomId = socket.roomId;
+      if (!roomId) return;
+      
+      try {
+        const roomSockets = await io.in(roomId).fetchSockets();
+        for (const s of roomSockets) {
+          if (s.user._id === socket.user._id && s.id !== socket.id) {
+            s.emit('deactivateAudioSync');
+          }
+        }
+      } catch (err) {
+        console.error('Error activating audio sync:', err);
       }
     });
   });
@@ -390,80 +460,35 @@ const initSocket = (httpServer) => {
   return io;
 };
 
-function handleLeave(socket, io) {
-  lobbyUsers.delete(socket.id);
-  socket.leave('lobby');
+const handleLeaveRoom = async (socket, io) => {
+  const roomId = socket.roomId;
+  if (!roomId) return;
 
-  // Clear sleep timer
-  const timer = sleepTimers.get(socket.id);
-  if (timer) {
-    clearTimeout(timer);
-    sleepTimers.delete(socket.id);
-  }
+  try {
+    socket.leave(roomId);
+    socket.roomId = null;
 
-  if (lobbyUsers.size === 0) {
-    // Terminate lobby when empty
-    mediaQueue = [];
-    currentTrackIndex = -1;
-    currentStartedAt = null;
-    isPlaying = false;
-    lobbyOwnerId = null;
-    repeatMode = 'off';
-    LobbyMessage.deleteMany({}).catch(err => console.error(err));
-  } else if (lobbyOwnerId === socket.id) {
-    // Pass ownership
-    const nextOwnerSocketId = lobbyUsers.keys().next().value;
-    lobbyOwnerId = nextOwnerSocketId;
-    const nextOwner = lobbyUsers.get(nextOwnerSocketId);
-    if (nextOwner) {
-      nextOwner.isOwner = true;
+    const room = await Room.findById(roomId);
+    if (!room) return;
+
+    // Filter out user from participants
+    room.participants = room.participants.filter(p => p.toString() !== socket.user._id);
+
+    if (room.participants.length === 0) {
+      await room.deleteOne();
+      await LobbyMessage.deleteMany({ roomId });
+    } else {
+      if (room.owner.toString() === socket.user._id) {
+        room.owner = room.participants[0];
+      }
+      await room.save();
+
+      const populated = await Room.findById(roomId).populate('participants', 'username profilePicture firstName lastName');
+      io.to(roomId).emit('presenceUpdate', populated.participants);
     }
+  } catch (err) {
+    console.error('Error handling leave room socket:', err);
   }
+};
 
-  io.to('lobby').emit('presenceUpdate', getLobbyUsersList());
-  
-  if (lobbyUsers.size === 0) {
-    io.to('lobby').emit('queueUpdate', {
-      queue: mediaQueue,
-      currentTrackIndex,
-      currentStartedAt: null,
-      isPlaying: false
-    });
-  }
-}
-
-function getLobbyUsersList() {
-  const users = [];
-  const seen = new Set();
-  for (const [, userData] of lobbyUsers) {
-    // Dedupe by userId (user might have multiple tabs)
-    if (!seen.has(userData.userId)) {
-      seen.add(userData.userId);
-      users.push({
-        userId: userData.userId,
-        username: userData.username,
-        profilePicture: userData.profilePicture,
-        mode: userData.mode,
-        joinedAt: userData.joinedAt,
-        isOwner: lobbyOwnerId === userData.socketId
-      });
-    }
-  }
-  return users;
-}
-
-function resetSleepTimer(socket, io) {
-  const existing = sleepTimers.get(socket.id);
-  if (existing) clearTimeout(existing);
-
-  const timer = setTimeout(() => {
-    console.log(`😴 ${socket.user.username} auto-disconnected (sleep timer)`);
-    socket.emit('sleepTimeout');
-    handleLeave(socket, io);
-    socket.disconnect(true);
-  }, SLEEP_TIMEOUT);
-
-  sleepTimers.set(socket.id, timer);
-}
-
-export { initSocket, lobbyUsers };
+export { initSocket };

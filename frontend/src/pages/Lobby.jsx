@@ -10,6 +10,7 @@ import { updateSpotifyToken, getMe } from '../features/auth/authSlice';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Card, CardContent } from '../components/ui/card';
 import { useLobby } from '../context/LobbyContext';
 import toast from 'react-hot-toast';
 
@@ -37,9 +38,6 @@ const Lobby = () => {
     isPlaying,
     sleepWarning,
     setSleepWarning,
-    joinLobby,
-    leaveLobby,
-    updateMode,
     sendMessage,
     addToQueue,
     clearQueue,
@@ -67,6 +65,12 @@ const Lobby = () => {
     isAudioSyncEnabled,
     activateAudioSync,
     requestSync,
+    activeRoom,
+    createCustomRoom,
+    joinCustomRoom,
+    leaveCustomRoom,
+    socket,
+    joinRoom
   } = useLobby();
 
   const [activeTab, setActiveTab] = useState('player'); // 'player' | 'queue' | 'listeners'
@@ -79,6 +83,87 @@ const Lobby = () => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const volumeRef = useRef(null);
+
+  // Custom multi-room states
+  const [publicRooms, setPublicRooms] = useState([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedRoomToJoin, setSelectedRoomToJoin] = useState(null);
+
+  // New room inputs
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomPrivate, setNewRoomPrivate] = useState(false);
+  const [newRoomPassword, setNewRoomPassword] = useState('');
+
+  // Password join input
+  const [joinPassword, setJoinPassword] = useState('');
+
+  // Invitation invite states
+  const [friends, setFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+
+  const fetchPublicRooms = async () => {
+    setRoomsLoading(true);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.get('/api/rooms/public', config);
+      setPublicRooms(data);
+    } catch (err) {
+      console.error('Failed to fetch rooms', err);
+    } finally {
+      setRoomsLoading(false);
+    }
+  };
+
+  const fetchFriendsForInvite = async () => {
+    setFriendsLoading(true);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.get('/api/users/friends/status', config);
+      setFriends(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFriendsLoading(false);
+    }
+  };
+
+  const handleSendInvite = (friendId) => {
+    if (!socket || !activeRoom) return;
+    socket.emit('sendLobbyInvite', {
+      receiverId: friendId,
+      roomId: activeRoom._id,
+      roomName: activeRoom.name
+    });
+    toast.success('Invitation sent!');
+  };
+
+  useEffect(() => {
+    if (user?.spotifyAccessToken && !activeRoom) {
+      fetchPublicRooms();
+    }
+  }, [user?.spotifyAccessToken, activeRoom]);
+
+  // Handle invitation query param redirect
+  const inviteRoomId = searchParams.get('roomId');
+  useEffect(() => {
+    if (inviteRoomId && user?.spotifyAccessToken && !activeRoom) {
+      const handleInviteJoin = async () => {
+        try {
+          await joinCustomRoom(inviteRoomId);
+          setSearchParams({});
+        } catch (err) {
+          // If password protected, show password modal
+          setSelectedRoomToJoin({ _id: inviteRoomId, isPrivate: true, name: 'Private Room' });
+          setShowPasswordModal(true);
+          setSearchParams({});
+        }
+      };
+      handleInviteJoin();
+    }
+  }, [inviteRoomId, user?.spotifyAccessToken, activeRoom]);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -190,14 +275,15 @@ const Lobby = () => {
 
   const handleRejoin = () => {
     setSleepWarning(false);
-    joinLobby('active');
-    setHasJoined(true);
+    if (activeRoom) {
+      joinRoom(activeRoom._id);
+      setHasJoined(true);
+    }
   };
 
-  const handleLeave = () => {
-    leaveLobby();
-    setHasJoined(false);
-    navigate('/');
+  const handleLeave = async () => {
+    await leaveCustomRoom();
+    navigate('/lobby');
   };
 
   const handleConnectSpotify = async () => {
@@ -212,14 +298,36 @@ const Lobby = () => {
     }
   };
 
-  const handleAddToQueue = () => {
+  const handleAddToQueue = async () => {
     if (!trackUrl.trim()) return;
     let finalUrl = trackUrl.trim();
-    if (finalUrl.includes('open.spotify.com/track/')) {
-      const trackId = finalUrl.split('track/')[1].split('?')[0];
-      finalUrl = `spotify:track:${trackId}`;
+    
+    const match = finalUrl.match(/track[/:]([a-zA-Z0-9]{22})/);
+    if (!match) {
+      toast.error('Invalid Spotify track URL. Please copy a track link.');
+      return;
     }
-    addToQueue(finalUrl, trackTitle.trim() || 'Spotify Track');
+
+    const trackId = match[1];
+    finalUrl = `spotify:track:${trackId}`;
+
+    let resolvedTitle = trackTitle.trim();
+    if (!resolvedTitle && user?.spotifyAccessToken) {
+      try {
+        const { data } = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+          headers: { Authorization: `Bearer ${user.spotifyAccessToken}` }
+        });
+        resolvedTitle = `${data.name} – ${data.artists?.map(a => a.name).join(', ')}`;
+      } catch (err) {
+        console.warn('Failed to fetch track metadata for queue display:', err.message);
+      }
+    }
+
+    if (!resolvedTitle) {
+      resolvedTitle = 'Spotify Track';
+    }
+    
+    addToQueue(finalUrl, resolvedTitle);
     setTrackUrl('');
     setTrackTitle('');
   };
@@ -289,12 +397,181 @@ const Lobby = () => {
     );
   }
 
-  // If connected to Spotify but not socket lobby yet, show loading spinner
-  if (!isConnected) {
+  // If connected to Spotify but not activeRoom, show Lobby Dashboard
+  if (user?.spotifyAccessToken && !activeRoom) {
+    return (
+      <div className="w-full flex flex-col gap-6 p-4 overflow-y-auto" style={{ height: 'calc(100vh - 9rem)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-foreground tracking-tight bg-gradient-to-r from-violet-400 to-emerald-400 bg-clip-text text-transparent">Orbit Music</h1>
+            <p className="text-xs text-muted-foreground">Select a lobby to listen together, or create your own.</p>
+          </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 font-bold gap-2 text-white h-10 px-4 cursor-pointer"
+          >
+            <Plus size={16} /> Create Room
+          </Button>
+        </div>
+
+        {/* Public Rooms Directory */}
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Active Lobbies</h2>
+          {roomsLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="animate-spin text-primary" size={28} />
+            </div>
+          ) : publicRooms.length === 0 ? (
+            <div className="text-center py-16 bg-card/40 border border-border/40 rounded-2xl">
+              <Headphones size={40} className="text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-muted-foreground">No active public lobbies</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Be the first to create one and invite your friends!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {publicRooms.map((room) => (
+                <Card key={room._id} className="bg-card/60 backdrop-blur-md border border-border/40 hover:border-violet-500/40 hover:bg-card/85 transition-all p-4 rounded-xl flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-foreground truncate max-w-[80%]">{room.name}</h3>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Users size={14} />
+                        <span>{room.participants?.length || 0}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mb-4">
+                      Host: {room.owner?.username || 'Unknown'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (room.isPrivate) {
+                        setSelectedRoomToJoin(room);
+                        setShowPasswordModal(true);
+                      } else {
+                        joinCustomRoom(room._id);
+                      }
+                    }}
+                    size="sm"
+                    className="w-full rounded-lg bg-violet-600/10 border border-violet-500/20 text-violet-300 hover:bg-violet-600 hover:text-white"
+                  >
+                    Join Room
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* --- Create Room Modal --- */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+              <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+                <X size={20} />
+              </button>
+              <h3 className="text-lg font-bold text-foreground mb-4">Create Music Lobby</h3>
+              
+              <div className="space-y-4 text-left">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Lobby Name</label>
+                  <Input
+                    placeholder="E.g. Lo-Fi Chill Beats"
+                    value={newRoomName}
+                    onChange={(e) => setNewRoomName(e.target.value)}
+                    className="h-10 rounded-lg bg-white/5 border-white/10"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                  <span className="text-xs text-muted-foreground">Private Room (Password Required)</span>
+                  <input
+                    type="checkbox"
+                    checked={newRoomPrivate}
+                    onChange={(e) => setNewRoomPrivate(e.target.checked)}
+                    className="w-4 h-4 accent-violet-600"
+                  />
+                </div>
+
+                {newRoomPrivate && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Lobby Password</label>
+                    <Input
+                      type="password"
+                      placeholder="Minimum 4 characters"
+                      value={newRoomPassword}
+                      onChange={(e) => setNewRoomPassword(e.target.value)}
+                      className="h-10 rounded-lg bg-white/5 border-white/10"
+                    />
+                  </div>
+                )}
+
+                <Button
+                  onClick={async () => {
+                    if (!newRoomName.trim()) return toast.error('Please enter a room name');
+                    try {
+                      await createCustomRoom(newRoomName, newRoomPrivate, newRoomPassword);
+                      setShowCreateModal(false);
+                      setNewRoomName('');
+                      setNewRoomPrivate(false);
+                      setNewRoomPassword('');
+                    } catch (err) {}
+                  }}
+                  className="w-full bg-violet-600 hover:bg-violet-500 rounded-full h-11"
+                >
+                  Create and Join
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- Password Prompt Modal --- */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+              <button onClick={() => { setShowPasswordModal(false); setSelectedRoomToJoin(null); setJoinPassword(''); }} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+                <X size={20} />
+              </button>
+              <h3 className="text-lg font-bold text-foreground mb-2">Private Lobby</h3>
+              <p className="text-xs text-muted-foreground mb-4">Enter password to join "{selectedRoomToJoin?.name}"</p>
+              
+              <div className="space-y-4 text-left">
+                <Input
+                  type="password"
+                  placeholder="Enter lobby password"
+                  value={joinPassword}
+                  onChange={(e) => setJoinPassword(e.target.value)}
+                  className="h-10 rounded-lg bg-white/5 border-white/15"
+                />
+                <Button
+                  onClick={async () => {
+                    try {
+                      await joinCustomRoom(selectedRoomToJoin._id, joinPassword);
+                      setShowPasswordModal(false);
+                      setSelectedRoomToJoin(null);
+                      setJoinPassword('');
+                    } catch (err) {}
+                  }}
+                  className="w-full bg-violet-600 hover:bg-violet-500 rounded-full h-11"
+                >
+                  Join Lobby
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If connected to Spotify but not socket room yet, show loading spinner
+  if (activeRoom && !isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-4">
         <Loader2 className="animate-spin text-violet-500" size={36} />
-        <p className="text-sm text-muted-foreground font-medium">Connecting to Lobby...</p>
+        <p className="text-sm text-muted-foreground font-medium">Connecting to Room...</p>
       </div>
     );
   }
@@ -314,19 +591,35 @@ const Lobby = () => {
       )}
 
       {/* ─── Top Bar ─── */}
-      <div className="flex items-center justify-between px-2 py-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-sm font-bold">{lobbyUsers.length} listening</span>
+      <div className="flex items-center justify-between px-2 py-2 shrink-0 border-b border-white/5 pb-3 mb-3">
+        <div className="flex flex-col">
+          <h2 className="text-sm font-extrabold text-foreground truncate max-w-[150px]">{activeRoom?.name}</h2>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[10px] text-muted-foreground font-medium">{lobbyUsers.length} listening</span>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleLeave}
-          className="text-xs h-8 rounded-full text-red-400 hover:text-red-500 hover:bg-red-500/10 cursor-pointer"
-        >
-          Leave Lobby
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchFriendsForInvite();
+              setShowInviteModal(true);
+            }}
+            className="text-xs h-9 rounded-full border-white/10 hover:bg-white/5 cursor-pointer gap-1 px-4"
+          >
+            Invite
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLeave}
+            className="text-xs h-9 rounded-full text-red-400 hover:text-red-500 hover:bg-red-500/10 cursor-pointer px-4"
+          >
+            Leave
+          </Button>
+        </div>
       </div>
 
       {/* ─── PLAYER TAB VIEW ─── */}
@@ -705,6 +998,53 @@ const Lobby = () => {
           </div>
         </div>
       )}
+
+      {/* ─── Invite Friends Modal ─── */}
+      {showInviteModal && (() => {
+        const onlineFriends = friends.filter(friend => friend.isOnline);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-zinc-900/95 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200 text-left">
+              <button onClick={() => setShowInviteModal(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                <X size={20} />
+              </button>
+              <h3 className="text-base font-bold text-foreground mb-4">Invite Friends</h3>
+              
+              <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+                {friendsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="animate-spin text-primary" size={24} />
+                  </div>
+                ) : onlineFriends.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">No friends online to invite</p>
+                ) : (
+                  onlineFriends.map((friend) => (
+                    <div key={friend._id} className="flex items-center justify-between p-2 rounded-xl hover:bg-white/5 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-emerald-400 flex items-center justify-center text-white font-bold text-xs overflow-hidden">
+                          {friend.profilePicture ? (
+                            <img src={friend.profilePicture} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            friend.username?.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <span className="text-xs font-semibold">{friend.username}</span>
+                      </div>
+                      <Button
+                        onClick={() => handleSendInvite(friend._id)}
+                        size="sm"
+                        className="h-8 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs px-3"
+                      >
+                        Invite
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

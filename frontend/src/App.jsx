@@ -1,24 +1,27 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
 import Layout from './components/Layout';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Search from './pages/Search';
-import Profile from './pages/Profile';
-import Hangs from './pages/Hangs';
-import Lobby from './pages/Lobby';
-import Messages from './pages/Messages';
-import Chat from './pages/Chat';
-import Notifications from './pages/Notifications';
-import SinglePost from './pages/SinglePost';
-import Settings from './pages/Settings';
-import Onboarding from './pages/Onboarding';
 import { useTheme } from './components/ThemeProvider';
 import ConstellationBackground from './components/ConstellationBackground';
 
 import { LobbyProvider } from './context/LobbyContext';
+
+// Lazy load pages for code-splitting
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Search = lazy(() => import('./pages/Search'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Hangs = lazy(() => import('./pages/Hangs'));
+const Lobby = lazy(() => import('./pages/Lobby'));
+const Messages = lazy(() => import('./pages/Messages'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const SinglePost = lazy(() => import('./pages/SinglePost'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
 
 function App() {
   const { isDarkMode } = useTheme();
@@ -29,25 +32,33 @@ function App() {
       <Toaster position="top-center" />
       <BrowserRouter>
         <LobbyProvider>
-          <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="search" element={<Search />} />
-            <Route path="hangs" element={<Hangs />} />
-            <Route path="lobby" element={<Lobby />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/:id" element={<Profile />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="messages/:userId" element={<Chat />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="post/:id" element={<SinglePost />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[60vh] w-full">
+                <Loader2 className="animate-spin text-primary" size={32} />
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Home />} />
+                <Route path="search" element={<Search />} />
+                <Route path="hangs" element={<Hangs />} />
+                <Route path="lobby" element={<Lobby />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="profile/:id" element={<Profile />} />
+                <Route path="messages" element={<Messages />} />
+                <Route path="messages/:userId" element={<Chat />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="post/:id" element={<SinglePost />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </LobbyProvider>
       </BrowserRouter>
     </div>

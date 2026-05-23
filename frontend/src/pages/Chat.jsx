@@ -30,6 +30,7 @@ const Chat = () => {
   const fileInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
+  const isFirstLoad = useRef(true);
 
   // Fetch user details
   useEffect(() => {
@@ -72,6 +73,12 @@ const Chat = () => {
       // If the message is from the person we are chatting with, or from us
       if (msg.sender._id === userId || msg.sender._id === user._id) {
         setMessages((prev) => [...prev, msg]);
+        
+        // If the message is from the other user, mark it as read in the DB in real-time
+        if (msg.sender._id === userId) {
+          const config = { headers: { Authorization: `Bearer ${user.token}` } };
+          axios.put(`/api/messages/${userId}/read`, {}, config).catch(() => {});
+        }
       }
     };
 
@@ -94,11 +101,16 @@ const Chat = () => {
       socket.off('privateMessageEdited', handleMessageEdited);
       socket.off('privateMessageDeleted', handleMessageDeleted);
     };
-  }, [socket, userId, user._id]);
+  }, [socket, userId, user._id, user.token]);
 
   // Scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isFirstLoad.current ? 'auto' : 'smooth'
+      });
+      isFirstLoad.current = false;
+    }
   }, [messages]);
 
   const handleImageSelect = (e) => {
@@ -340,6 +352,11 @@ const Chat = () => {
                   )
                 )}
               </div>
+              {msg.createdAt && (
+                <span className="text-[9px] text-muted-foreground mt-0.5 px-1.5 font-medium leading-none">
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
 
               {/* Action Menu (Edit / Delete) */}
               {isMe && activeMenuId === msg._id && !editingMessageId && (

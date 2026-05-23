@@ -223,11 +223,29 @@ const Home = () => {
       </Card>
 
       {/* Feed */}
-      <div className="w-full">
+      <div className="w-full flex flex-col gap-4">
         {posts.length > 0 ? (
           posts.map((post) => <PostCard key={post._id} post={post} />)
+        ) : isLoading ? (
+          Array.from({ length: 3 }).map((_, idx) => (
+            <Card key={idx} className="w-full bg-card/60 backdrop-blur-md border-border/40 p-4 rounded-xl space-y-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                  <div className="h-3 bg-muted rounded w-1/4" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-full" />
+                <div className="h-4 bg-muted rounded w-5/6" />
+                <div className="h-4 bg-muted rounded w-2/3" />
+              </div>
+              <div className="h-48 bg-muted rounded-xl w-full mt-2" />
+            </Card>
+          ))
         ) : (
-          !isLoading && <p className="text-center text-muted-foreground mt-8">No posts yet. Be the first!</p>
+          <p className="text-center text-muted-foreground mt-8">No posts yet. Be the first!</p>
         )}
       </div>
 

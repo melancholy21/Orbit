@@ -5,6 +5,8 @@ import useSocket from '../hooks/useSocket';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
+const spotifyClient = axios.create();
+
 const LobbyContext = createContext(null);
 
 export const LobbyProvider = ({ children }) => {
@@ -55,7 +57,7 @@ export const LobbyProvider = ({ children }) => {
           Authorization: `Bearer ${activeToken}`
         }
       };
-      return await axios(config);
+      return await spotifyClient(config);
     } catch (err) {
       if (err.response?.status === 401) {
         console.log('Spotify token expired in LobbyContext. Refreshing...');
@@ -70,7 +72,7 @@ export const LobbyProvider = ({ children }) => {
               Authorization: `Bearer ${newToken}`
             }
           };
-          return await axios(config);
+          return await spotifyClient(config);
         }
       }
       throw err;
@@ -79,20 +81,137 @@ export const LobbyProvider = ({ children }) => {
 
   const [hasJoined, setHasJoined] = useState(false);
   const [mode, setMode] = useState('active'); // 'active' | 'lurker'
+  const [activeRoom, setActiveRoom] = useState(null);
 
   // 1. Socket Connection
   const socketState = useSocket(user?.token, false);
-  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinLobby, isAudioSyncEnabled, currentStartedAt } = socketState;
+  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinRoom, leaveRoom, isAudioSyncEnabled, currentStartedAt, socket } = socketState;
 
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // Auto-join lobby when Spotify token and Socket connection are present
+  // Fetch active room from database on load
   useEffect(() => {
-    if (token && isConnected) {
-      joinLobby('active');
+    const fetchActiveRoom = async () => {
+      if (!user?.token) return;
+      try {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const { data } = await axios.get('/api/rooms/active', config);
+        if (data) {
+          setActiveRoom(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch active room', err);
+      }
+    };
+    fetchActiveRoom();
+  }, [user?.token]);
+
+  // Connect socket when active room is known and socket connected
+  useEffect(() => {
+    if (activeRoom && isConnected && !hasJoined) {
+      joinRoom(activeRoom._id);
       setHasJoined(true);
     }
-  }, [token, isConnected, joinLobby]);
+  }, [activeRoom, isConnected, hasJoined, joinRoom]);
+
+  const createCustomRoom = async (name, isPrivate, password) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.post('/api/rooms', { name, isPrivate, password }, config);
+      setActiveRoom(data);
+      if (socket) {
+        joinRoom(data._id);
+        setHasJoined(true);
+      }
+      toast.success(`Room "${name}" created!`);
+      return data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create room');
+      throw err;
+    }
+  };
+
+  const joinCustomRoom = async (roomId, password) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      const { data } = await axios.post(`/api/rooms/${roomId}/join`, { password }, config);
+      setActiveRoom(data);
+      if (socket) {
+        joinRoom(data._id);
+        setHasJoined(true);
+      }
+      toast.success(`Joined room "${data.name}"!`);
+      return data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to join room');
+      throw err;
+    }
+  };
+
+  const leaveCustomRoom = async () => {
+    if (!activeRoom) return;
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.post(`/api/rooms/${activeRoom._id}/leave`, {}, config);
+    } catch (err) {
+      console.warn('Backend room cleanup warning:', err.response?.data?.message || err.message);
+    } finally {
+      if (socket) {
+        leaveRoom();
+      }
+      setActiveRoom(null);
+      setHasJoined(false);
+      toast.success('Left room');
+    }
+  };
+
+  // Listen for lobby invitations in real time
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLobbyInvite = ({ sender, roomId, roomName }) => {
+      toast((t) => (
+        <div className="flex flex-col gap-2 p-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm">{sender.username}</span>
+            <span className="text-xs text-muted-foreground">invited you to join their lobby</span>
+          </div>
+          <p className="text-xs font-semibold text-primary">"{roomName}"</p>
+          <div className="flex gap-2 justify-end mt-1">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-2.5 py-1 text-xs font-semibold rounded hover:bg-muted transition-colors text-muted-foreground border border-border"
+            >
+              Decline
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  if (activeRoom) {
+                    await leaveCustomRoom();
+                  }
+                  await joinCustomRoom(roomId);
+                  window.location.href = `/lobby?roomId=${roomId}`;
+                } catch (err) {
+                  window.location.href = `/lobby?roomId=${roomId}`;
+                }
+              }}
+              className="px-2.5 py-1 text-xs font-semibold rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      ), {
+        duration: 10000,
+        position: 'top-right',
+      });
+    };
+
+    socket.on('lobbyInvite', handleLobbyInvite);
+    return () => socket.off('lobbyInvite', handleLobbyInvite);
+  }, [socket, activeRoom]);
 
   // 2. Spotify Player State
   const [player, setPlayer] = useState(null);
@@ -331,7 +450,12 @@ export const LobbyProvider = ({ children }) => {
               }
             };
 
-            await playWithRetry();
+            try {
+              await playWithRetry();
+            } catch (playErr) {
+              lastPlayedUrl.current = currentTrack.url;
+              throw playErr;
+            }
 
             lastPlayedUrl.current = currentTrack.url;
             lastIsPlaying.current = true;
@@ -402,7 +526,11 @@ export const LobbyProvider = ({ children }) => {
     hasJoined,
     setHasJoined,
     mode,
-    setMode
+    setMode,
+    activeRoom,
+    createCustomRoom,
+    joinCustomRoom,
+    leaveCustomRoom
   };
 
   return (

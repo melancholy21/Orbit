@@ -10,7 +10,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
-import { initSocket, lobbyUsers } from './socket.js';
+import { initSocket, onlineUsers } from './socket.js';
 
 // Connect to database
 connectDB();
@@ -43,7 +43,6 @@ app.use(express.urlencoded({ extended: false }));
 // Make io accessible in routes
 app.set('io', io);
 
-// Routes
 import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -53,6 +52,7 @@ import lobbyRoutes from './routes/lobbyRoutes.js';
 import spotifyRoutes from './routes/spotifyRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
@@ -63,6 +63,7 @@ app.use('/api/lobby', lobbyRoutes);
 app.use('/api/spotify', spotifyRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Make uploads folder static
 const __dirname = path.resolve();

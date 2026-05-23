@@ -12,7 +12,21 @@ export const getConversations = async (req, res) => {
     .populate('lastMessage')
     .sort({ updatedAt: -1 });
     
-    res.json(conversations);
+    const conversationsWithUnread = await Promise.all(
+      conversations.map(async (conv) => {
+        const unreadCount = await Message.countDocuments({
+          conversationId: conv._id,
+          sender: { $ne: req.user._id },
+          readBy: { $ne: req.user._id }
+        });
+        return {
+          ...conv.toObject(),
+          unreadCount
+        };
+      })
+    );
+
+    res.json(conversationsWithUnread);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -31,6 +45,18 @@ export const getMessages = async (req, res) => {
     if (!conversation) {
       return res.json([]);
     }
+
+    // Mark messages from the other user as read
+    await Message.updateMany(
+      {
+        conversationId: conversation._id,
+        sender: userId,
+        readBy: { $ne: req.user._id }
+      },
+      {
+        $addToSet: { readBy: req.user._id }
+      }
+    );
 
     const messages = await Message.find({ conversationId: conversation._id })
       .populate('sender', 'username profilePicture firstName lastName')
@@ -152,6 +178,33 @@ export const deleteMessage = async (req, res) => {
     }
 
     res.json({ message: 'Message deleted successfully', messageId });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Mark conversation messages as read
+export const markAsRead = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const conversation = await Conversation.findOne({
+      participants: { $all: [req.user._id, userId] }
+    });
+
+    if (conversation) {
+      await Message.updateMany(
+        {
+          conversationId: conversation._id,
+          sender: userId,
+          readBy: { $ne: req.user._id }
+        },
+        {
+          $addToSet: { readBy: req.user._id }
+        }
+      );
+    }
+
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

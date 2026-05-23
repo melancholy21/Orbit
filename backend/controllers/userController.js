@@ -122,7 +122,12 @@ export const getFriendsWithStatus = async (req, res, next) => {
       _id: { $in: friendIds }
     }).select('username profilePicture status');
 
-    res.status(200).json(friends);
+    const friendsWithOnline = friends.map(f => ({
+      ...f.toObject(),
+      isOnline: onlineUsers.has(f._id.toString())
+    }));
+
+    res.status(200).json(friendsWithOnline);
   } catch (error) {
     next(error);
   }

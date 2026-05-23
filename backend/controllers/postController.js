@@ -342,7 +342,20 @@ export const sharePost = async (req, res, next) => {
       throw new Error('Post not found');
     }
 
-    if (!post.shares.includes(req.user.id)) {
+    const userIdStr = req.user.id.toString();
+    const hasShared = post.shares.some(id => id.toString() === userIdStr);
+
+    if (hasShared) {
+      // Undo Repost
+      post.shares = post.shares.filter(id => id.toString() !== userIdStr);
+      await Notification.deleteMany({
+        recipient: post.author,
+        sender: req.user.id,
+        type: 'share',
+        post: post._id
+      });
+    } else {
+      // Repost
       post.shares.push(req.user.id);
       
       // Notify author
@@ -362,10 +375,9 @@ export const sharePost = async (req, res, next) => {
           io.to(receiverSocketId).emit('newNotification', populatedNotif);
         }
       }
-      
-      await post.save();
     }
 
+    await post.save();
     res.status(200).json(post.shares);
   } catch (error) {
     next(error);
