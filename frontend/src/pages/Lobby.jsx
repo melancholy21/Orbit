@@ -6,7 +6,7 @@ import {
   Volume2, VolumeX, ListMusic, Plus, Search, Trash2, X, ChevronDown, Users,
   Shuffle, Repeat, Heart, Share2, Headphones
 } from 'lucide-react';
-import { updateSpotifyToken } from '../features/auth/authSlice';
+import { updateSpotifyToken, getMe } from '../features/auth/authSlice';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -64,6 +64,9 @@ const Lobby = () => {
     repeatMode,
     shuffleQueue,
     toggleRepeat,
+    isAudioSyncEnabled,
+    activateAudioSync,
+    requestSync,
   } = useLobby();
 
   const [activeTab, setActiveTab] = useState('player'); // 'player' | 'queue' | 'listeners'
@@ -117,8 +120,12 @@ const Lobby = () => {
   }, [searchParams, dispatch, setSearchParams]);
 
   useEffect(() => {
-    if (!user) navigate('/login');
-  }, [user, navigate]);
+    if (!user) {
+      navigate('/login');
+    } else {
+      dispatch(getMe());
+    }
+  }, [dispatch, navigate]);
 
   // Fetch Spotify Liked Songs on token update or join
   useEffect(() => {
@@ -322,6 +329,21 @@ const Lobby = () => {
               </p>
             )}
           </div>
+
+          {/* Active Audio Sync Switcher */}
+          {!isAudioSyncEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                activateAudioSync();
+                requestSync();
+              }}
+              className="mb-4 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 rounded-full px-4 py-1 h-8 animate-pulse shrink-0 cursor-pointer"
+            >
+              Listen on this device
+            </Button>
+          )}
 
           {/* Progress Bar */}
           <div className="w-full max-w-[320px] mb-3 flex-shrink-0">

@@ -14,7 +14,7 @@ export const LobbyProvider = ({ children }) => {
 
   // 1. Socket Connection
   const socketState = useSocket(user?.token, false);
-  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinLobby } = socketState;
+  const { isConnected, queue, currentTrackIndex, isPlaying, trackEnded, joinLobby, isAudioSyncEnabled } = socketState;
 
   // Auto-join lobby when Spotify token and Socket connection are present
   useEffect(() => {
@@ -163,6 +163,24 @@ export const LobbyProvider = ({ children }) => {
 
   useEffect(() => {
     if (!isReady || !deviceId || !token) return;
+
+    if (!isAudioSyncEnabled) {
+      // Pause local Spotify playback when sync is disabled
+      const pausePlayback = async () => {
+        try {
+          await axios.put(
+            `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (err) {
+          // Squelch background pause errors
+        }
+      };
+      pausePlayback();
+      lastIsPlaying.current = false;
+      return;
+    }
 
     const syncPlayback = async () => {
       try {

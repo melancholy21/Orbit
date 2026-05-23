@@ -44,6 +44,7 @@ export const registerUser = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         isOnboarded: user.isOnboarded,
+        spotifyAccessToken: user.spotifyAccessToken,
         token: generateToken(user._id),
       });
     } else {
@@ -75,6 +76,7 @@ export const loginUser = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         isOnboarded: user.isOnboarded,
+        spotifyAccessToken: user.spotifyAccessToken,
         token: generateToken(user._id),
       });
     } else {

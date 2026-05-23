@@ -14,6 +14,7 @@ const useSocket = (token, autoJoin = false) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [sleepWarning, setSleepWarning] = useState(false);
   const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'track' | 'queue'
+  const [isAudioSyncEnabled, setIsAudioSyncEnabled] = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -73,6 +74,11 @@ const useSocket = (token, autoJoin = false) => {
       setRepeatMode(data.repeatMode || 'off');
     });
 
+    socket.on('deactivateAudioSync', () => {
+      console.log('Audio sync deactivated on this device');
+      setIsAudioSyncEnabled(false);
+    });
+
     socket.on('sleepTimeout', () => {
       setSleepWarning(true);
     });
@@ -110,14 +116,20 @@ const useSocket = (token, autoJoin = false) => {
   }, []);
 
   const skipTrack = useCallback(() => {
+    setIsAudioSyncEnabled(true);
+    socketRef.current?.emit('activateAudioSync');
     socketRef.current?.emit('skipTrack');
   }, []);
 
   const previousTrack = useCallback(() => {
+    setIsAudioSyncEnabled(true);
+    socketRef.current?.emit('activateAudioSync');
     socketRef.current?.emit('previousTrack');
   }, []);
 
   const togglePlay = useCallback(() => {
+    setIsAudioSyncEnabled(true);
+    socketRef.current?.emit('activateAudioSync');
     socketRef.current?.emit('togglePlay');
   }, []);
 
@@ -141,10 +153,17 @@ const useSocket = (token, autoJoin = false) => {
     socketRef.current?.emit('toggleRepeat');
   }, []);
 
+  const activateAudioSync = useCallback(() => {
+    setIsAudioSyncEnabled(true);
+    socketRef.current?.emit('activateAudioSync');
+  }, []);
+
   return {
     socket: socketRef.current,
     isConnected,
     lobbyUsers,
+    isAudioSyncEnabled,
+    activateAudioSync,
     messages,
     queue,
     currentTrackIndex,

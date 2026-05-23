@@ -57,7 +57,7 @@ const initSocket = (httpServer) => {
 
     // ============ PRESENCE ============
 
-    socket.on('joinLobby', ({ mode = 'active' }) => {
+    socket.on('joinLobby', ({ mode = 'active' } = {}) => {
       const isFirst = lobbyUsers.size === 0;
       if (isFirst || !lobbyOwnerId) {
         lobbyOwnerId = socket.id;
@@ -376,6 +376,14 @@ const initSocket = (httpServer) => {
         isPlaying,
         repeatMode
       });
+    });
+
+    socket.on('activateAudioSync', () => {
+      for (const [sid, userData] of lobbyUsers) {
+        if (userData.userId === socket.user._id && sid !== socket.id) {
+          io.to(sid).emit('deactivateAudioSync');
+        }
+      }
     });
   });
 

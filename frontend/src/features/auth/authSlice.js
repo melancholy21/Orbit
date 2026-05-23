@@ -47,6 +47,21 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   await authService.logout();
 });
 
+// Get current user profile
+export const getMe = createAsyncThunk('auth/getMe', async (_, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
+    return await authService.getMe(token);
+  } catch (error) {
+    const message =
+      (error.response && error.response.data && error.response.data.message) ||
+      error.message ||
+      error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -120,6 +135,13 @@ export const authSlice = createSlice({
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
+      })
+      .addCase(getMe.fulfilled, (state, action) => {
+        state.user = { ...state.user, ...action.payload };
+        localStorage.setItem('user', JSON.stringify(state.user));
+      })
+      .addCase(getMe.rejected, (state, action) => {
+        console.error('Failed to sync user profile:', action.payload);
       });
   },
 });
