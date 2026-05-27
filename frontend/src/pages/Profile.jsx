@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Camera, Users, UserCheck, Grid3X3, Loader2, Heart, MessageCircle, MapPin, Link as LinkIcon, Pencil, X, MessageSquare, Share, LayoutList, Trash2, Calendar } from 'lucide-react';
+import { Camera, Users, User, UserCheck, Grid3X3, Loader2, Heart, MessageCircle, MapPin, Link as LinkIcon, Pencil, X, MessageSquare, Share, LayoutList, Trash2, Calendar, AlignLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Card } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
@@ -12,6 +12,8 @@ import PostCard from '../components/PostCard';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { getImageUrl } from '../lib/utils';
+
 
 const Profile = () => {
   const { id } = useParams();
@@ -240,7 +242,15 @@ const Profile = () => {
           onConfirm: () => executeUnfriendAction(config),
           isDestructive: true
         });
+      } else if (action === 'cancel') {
+        await axios.delete(`/api/users/friends/${targetUserId}/cancel`, config);
+        setProfile(prev => ({
+          ...prev,
+          friendRequestsReceived: prev.friendRequestsReceived?.filter(id => id.toString() !== user._id.toString())
+        }));
+        toast.success('Friend request cancelled');
       }
+
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to perform friend action');
     }
@@ -319,20 +329,29 @@ const Profile = () => {
       {/* Profile Card Header (Highly Polished Centered Layout) */}
       <Card className="w-full overflow-hidden border-border/30 bg-card/30 backdrop-blur-md shadow-lg rounded-2xl">
         {/* Cover Photo */}
-        <div className="relative h-36 md:h-44 w-full bg-muted overflow-hidden group">
+        <div className="relative h-44 md:h-52 w-full bg-muted overflow-hidden group">
           {profile.coverPicture ? (
-            <img src={profile.coverPicture} alt="Cover" className="w-full h-full object-cover" />
+            <img 
+              src={getImageUrl(profile.coverPicture)} 
+              alt="Cover" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out" 
+            />
           ) : (
-            <div className="w-full h-full bg-gradient-to-tr from-violet-600/25 via-indigo-600/15 to-fuchsia-600/20 backdrop-blur-md" />
+            <div className="w-full h-full relative overflow-hidden bg-slate-950">
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600/30 via-fuchsia-500/20 to-indigo-600/30" />
+              <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+              <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '12s' }} />
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+            </div>
           )}
           
           {/* Edit/Remove Cover Button Overlay (Own Profile) - Placed at top-right to avoid overlap with profile picture */}
           {isOwnProfile && (
-            <div className="absolute right-3 top-3 flex gap-2 z-30">
+            <div className="absolute right-3 top-3 flex gap-2 z-30 opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
               <Button 
                 size="sm" 
                 variant="secondary" 
-                className="gap-1.5 backdrop-blur-md bg-background/70 hover:bg-background/90 text-foreground border border-border/40 shadow-md text-xs h-8 px-3 rounded-lg font-semibold"
+                className="gap-1.5 backdrop-blur-md bg-background/50 hover:bg-background/85 text-foreground border border-white/10 shadow-lg text-xs h-8 px-3 rounded-xl font-bold transition-all duration-200 active:scale-95"
                 onClick={() => coverInputRef.current?.click()}
                 disabled={isCoverUploading}
               >
@@ -343,7 +362,7 @@ const Profile = () => {
                 <Button 
                   size="sm" 
                   variant="destructive" 
-                  className="gap-1.5 backdrop-blur-md bg-red-600/80 hover:bg-red-600/90 text-white border border-red-700/40 shadow-md text-xs h-8 px-2.5 rounded-lg"
+                  className="gap-1.5 backdrop-blur-md bg-red-600/60 hover:bg-red-600/80 text-white border border-red-500/20 shadow-lg text-xs h-8 px-2.5 rounded-xl transition-all duration-200 active:scale-95"
                   onClick={handleCoverRemove}
                   disabled={isCoverUploading}
                 >
@@ -354,6 +373,7 @@ const Profile = () => {
             </div>
           )}
         </div>
+
 
         {/* Profile Content Container */}
         <div className="px-6 pb-6 text-center flex flex-col items-center">
@@ -431,10 +451,10 @@ const Profile = () => {
               <Button 
                 size="sm" 
                 variant="outline" 
-                className="w-full gap-2 border-white/20 bg-white hover:bg-white/90 text-black h-9 rounded-xl font-bold text-xs shadow-md transition-all duration-300 active:scale-[0.98] group" 
+                className="w-full gap-2 border-white/10 hover:border-violet-500/30 bg-white/5 hover:bg-violet-500/10 text-foreground hover:text-violet-200 h-9 rounded-xl font-bold text-xs shadow-md hover:shadow-[0_0_15px_rgba(139,92,246,0.15)] transition-all duration-300 active:scale-[0.98] group" 
                 onClick={() => setIsEditModalOpen(true)}
               >
-                <Pencil size={13} className="text-black transition-transform group-hover:rotate-12 duration-200" /> Edit Profile
+                <Pencil size={13} className="text-muted-foreground group-hover:text-violet-300 transition-transform group-hover:rotate-12 duration-200" /> Edit Profile
               </Button>
             ) : (
               <div className="flex w-full gap-2">
@@ -448,8 +468,8 @@ const Profile = () => {
                       <UserCheck size={14} /> Accept Request
                     </Button>
                   ) : hasSentRequest ? (
-                    <Button disabled variant="outline" className="w-full gap-1.5 text-xs h-9 rounded-xl backdrop-blur-md bg-background/20 text-muted-foreground border-border/20">
-                      <Users size={14} /> Request Sent
+                    <Button onClick={() => handleFriendAction('cancel')} variant="outline" className="w-full gap-1.5 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/20 border-red-500/20 h-9 rounded-xl backdrop-blur-md bg-background/30 shadow-md">
+                      <X size={14} /> Cancel Request
                     </Button>
                   ) : (
                     <Button onClick={() => handleFriendAction('request')} variant="outline" className="w-full gap-1.5 text-xs h-9 rounded-xl border-primary/30 backdrop-blur-md bg-primary/10 text-primary hover:bg-primary/20">
@@ -563,7 +583,7 @@ const Profile = () => {
                     onClick={() => navigate(`/post/${post._id}`)} 
                     className="relative aspect-square overflow-hidden bg-muted group cursor-pointer rounded-lg border border-border/40"
                   >
-                    <img src={post.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={getImageUrl(post.image)} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-4">
                       <div className="flex items-center gap-1 text-white text-sm font-semibold"><Heart size={16} className="fill-white" />{post.likes?.length || 0}</div>
                       <div className="flex items-center gap-1 text-white text-sm font-semibold"><MessageCircle size={16} className="fill-white" />{post.comments?.length || 0}</div>
@@ -651,68 +671,98 @@ const Profile = () => {
 
       {/* Edit Profile Modal (Improved with FirstName / LastName fields) */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card/85 backdrop-blur-lg w-full max-w-md rounded-2xl border border-border/30 shadow-2xl p-6 relative">
-            <button onClick={() => setIsEditModalOpen(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
-              <X size={20} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card/90 backdrop-blur-xl w-full max-w-md rounded-2xl border border-white/10 shadow-2xl p-6 relative shadow-[0_0_50px_0_rgba(109,40,217,0.15)]">
+            <button 
+              onClick={() => setIsEditModalOpen(false)} 
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground p-1 hover:bg-white/5 rounded-full transition-colors"
+            >
+              <X size={18} />
             </button>
-            <h2 className="text-xl font-bold mb-5 text-foreground">Edit Profile</h2>
-            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+            
+            <div className="mb-6">
+              <h2 className="text-xl font-black bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent flex items-center gap-2">
+                Edit Orbit Profile
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">Customize your presence details for your friends to see.</p>
+            </div>
+            
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">First Name</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <User size={13} className="text-violet-400" /> First Name
+                  </label>
                   <input 
                     type="text" 
                     value={editForm.firstName} 
                     onChange={e => setEditForm({...editForm, firstName: e.target.value})}
-                    className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 rounded-xl px-3 py-2.5 text-sm transition-all duration-300 outline-none text-foreground placeholder:text-muted-foreground/60"
                     placeholder="First Name"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Last Name</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <User size={13} className="text-violet-400" /> Last Name
+                  </label>
                   <input 
                     type="text" 
                     value={editForm.lastName} 
                     onChange={e => setEditForm({...editForm, lastName: e.target.value})}
-                    className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 rounded-xl px-3 py-2.5 text-sm transition-all duration-300 outline-none text-foreground placeholder:text-muted-foreground/60"
                     placeholder="Last Name"
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Bio</label>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <AlignLeft size={13} className="text-violet-400" /> Bio
+                </label>
                 <textarea 
                   value={editForm.bio} 
                   onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none h-20"
+                  className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 rounded-xl px-3 py-2.5 text-sm transition-all duration-300 outline-none text-foreground placeholder:text-muted-foreground/60 resize-none h-20"
                   placeholder="Tell us about yourself..."
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Location</label>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <MapPin size={13} className="text-violet-400" /> Location
+                </label>
                 <input 
                   type="text" 
                   value={editForm.location} 
                   onChange={e => setEditForm({...editForm, location: e.target.value})}
-                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 rounded-xl px-3 py-2.5 text-sm transition-all duration-300 outline-none text-foreground placeholder:text-muted-foreground/60"
                   placeholder="e.g. San Francisco, CA"
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Website</label>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <LinkIcon size={13} className="text-violet-400" /> Website
+                </label>
                 <input 
                   type="text" 
                   value={editForm.website} 
                   onChange={e => setEditForm({...editForm, website: e.target.value})}
-                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 rounded-xl px-3 py-2.5 text-sm transition-all duration-300 outline-none text-foreground placeholder:text-muted-foreground/60"
                   placeholder="e.g. yoursite.com"
                 />
               </div>
-              <Button onClick={handleSaveProfile} disabled={isSaving} className="w-full mt-2">
-                {isSaving ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-                Save Changes
-              </Button>
+              
+              <div className="pt-2">
+                <Button 
+                  onClick={handleSaveProfile} 
+                  disabled={isSaving} 
+                  className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-violet-600/20 hover:shadow-violet-600/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 border-0"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={16} /> : null}
+                  Save Profile Details
+                </Button>
+              </div>
             </div>
           </div>
         </div>

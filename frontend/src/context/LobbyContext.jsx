@@ -7,6 +7,42 @@ import { toast } from 'react-hot-toast';
 
 const spotifyClient = axios.create();
 
+// Add response interceptor to handle HTTP 429 rate limits
+spotifyClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    // If the error is a 429 (Rate Limit) and we haven't reached the max retry limit (3)
+    if (error.response?.status === 429 && (!config._retryCount || config._retryCount < 3)) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      
+      // Respect the Retry-After header if present, otherwise default to exponential backoff
+      const retryAfterHeader = error.response.headers?.['retry-after'];
+      let delayMs = 1000; // Default fallback to 1 second
+      
+      if (retryAfterHeader) {
+        const parsed = parseInt(retryAfterHeader, 10);
+        if (!isNaN(parsed)) {
+          // Retry-After header is in seconds, convert to milliseconds
+          delayMs = parsed * 1000;
+        }
+      } else {
+        // Exponential backoff fallback: 1s, 2s, 4s...
+        delayMs = 1000 * Math.pow(2, config._retryCount);
+      }
+      
+      console.warn(`[Spotify API] Rate Limit (429) hit. Retrying request in ${delayMs}ms (Attempt ${config._retryCount}/3)...`);
+      
+      // Wait for the specified delay
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      
+      // Retry the request with the same config
+      return spotifyClient(config);
+    }
+    return Promise.reject(error);
+  }
+);
+
 const LobbyContext = createContext(null);
 
 export const LobbyProvider = ({ children }) => {

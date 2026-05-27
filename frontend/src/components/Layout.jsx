@@ -4,6 +4,8 @@ import { Home, Search, User, Moon, Sun, Orbit, PartyPopper, Radio, MessageSquare
 import { Settings } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from './ThemeProvider';
+import { getMe } from '../features/auth/authSlice';
+
 import MiniPlayer from './lobby/MiniPlayer';
 import { useLobby } from '../context/LobbyContext';
 import axios from 'axios';
@@ -33,6 +35,12 @@ const Layout = () => {
       console.error('Failed to fetch unread messages count', err);
     }
   };
+
+  useEffect(() => {
+    if (user?.token) {
+      dispatch(getMe());
+    }
+  }, [dispatch, user?.token]);
 
   useEffect(() => {
     if (!user) {

@@ -88,6 +88,19 @@ const Search = () => {
     }
   };
 
+  const handleCancelFriendRequest = async (userId) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.delete(`/api/users/friends/${userId}/cancel`, config);
+      
+      const updatedSent = (user.friendRequestsSent || []).filter(id => id !== userId);
+      dispatch(updateUser({ friendRequestsSent: updatedSent }));
+      toast.success('Friend request cancelled!');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel request');
+    }
+  };
+
   const handleAcceptFriendRequest = async (userId) => {
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
@@ -166,12 +179,12 @@ const Search = () => {
                 </div>
               ) : hasSent ? (
                 <Button
-                  disabled
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 h-8 min-w-[100px] border-white/10 text-muted-foreground"
+                  onClick={() => handleCancelFriendRequest(u._id)}
+                  className="gap-1.5 h-8 min-w-[100px] border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                 >
-                  Requested
+                  Cancel
                 </Button>
               ) : hasReceived ? (
                 <Button

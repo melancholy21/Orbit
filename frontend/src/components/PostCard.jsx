@@ -11,6 +11,8 @@ import { Input } from '../components/ui/input';
 import { Separator } from '../components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import ConfirmDialog from './ConfirmDialog';
+import { getImageUrl } from '../lib/utils';
+
 
 const PostCard = ({ post: initialPost }) => {
   const dispatch = useDispatch();
@@ -305,7 +307,7 @@ const PostCard = ({ post: initialPost }) => {
 
         {post.image && !editRemoveImage && (
           <div className="mt-4 rounded-lg overflow-hidden border border-border relative group">
-            <img src={post.image} alt="Post content" className="w-full h-auto object-cover" loading="lazy" />
+            <img src={getImageUrl(post.image)} alt="Post content" className="w-full h-auto object-cover" loading="lazy" />
             {isEditing && (
               <button
                 onClick={() => setEditRemoveImage(true)}

@@ -2,16 +2,64 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { onlineUsers } from '../socket.js';
 
+// Helper to clean up non-existent user IDs from relationship arrays
+const cleanUserRelationships = async (user) => {
+  const allIds = [
+    ...(user.followers || []),
+    ...(user.following || []),
+    ...(user.friends || []),
+    ...(user.friendRequestsSent || []),
+    ...(user.friendRequestsReceived || [])
+  ];
+
+  if (allIds.length === 0) return user;
+
+  const existingUsers = await User.find({ _id: { $in: allIds } }).select('_id');
+  const existingIdsSet = new Set(existingUsers.map(u => u._id.toString()));
+
+  let hasChanges = false;
+  const cleanList = (list) => {
+    if (!list) return [];
+    const filtered = list.filter(id => existingIdsSet.has(id.toString()));
+    if (filtered.length !== list.length) {
+      hasChanges = true;
+    }
+    return filtered;
+  };
+
+  user.followers = cleanList(user.followers);
+  user.following = cleanList(user.following);
+  user.friends = cleanList(user.friends);
+  user.friendRequestsSent = cleanList(user.friendRequestsSent);
+  user.friendRequestsReceived = cleanList(user.friendRequestsReceived);
+
+  if (hasChanges) {
+    await user.save();
+  }
+  return user;
+};
+
 export const getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select('-password -spotifyAccessToken -spotifyRefreshToken -spotifyTokenExpiry -email -loginAttempts -lockUntil');
+    let user = await User.findById(req.params.id);
 
     if (!user) {
       res.status(404);
       throw new Error('User not found');
     }
 
-    res.status(200).json(user);
+    user = await cleanUserRelationships(user);
+
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.spotifyAccessToken;
+    delete userObj.spotifyRefreshToken;
+    delete userObj.spotifyTokenExpiry;
+    delete userObj.email;
+    delete userObj.loginAttempts;
+    delete userObj.lockUntil;
+
+    res.status(200).json(userObj);
   } catch (error) {
     next(error);
   }
@@ -399,14 +447,52 @@ export const removeFriend = async (req, res, next) => {
   }
 };
 
+export const cancelFriendRequest = async (req, res, next) => {
+  try {
+    const targetUserId = req.params.id;
+    const currentUser = await User.findById(req.user.id);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser || !currentUser) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    // Remove from requests arrays
+    currentUser.friendRequestsSent = (currentUser.friendRequestsSent || []).filter(
+      id => id.toString() !== targetUserId.toString()
+    );
+    targetUser.friendRequestsReceived = (targetUser.friendRequestsReceived || []).filter(
+      id => id.toString() !== currentUser.id.toString()
+    );
+
+    // Delete the friend request notification
+    await Notification.deleteOne({
+      recipient: targetUserId,
+      sender: req.user.id,
+      type: 'friend_request'
+    });
+
+    await currentUser.save();
+    await targetUser.save();
+
+    res.status(200).json({ message: 'Friend request cancelled' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 export const getFollowers = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).populate('followers', 'username profilePicture bio');
+    let user = await User.findById(req.params.id);
     if (!user) {
       res.status(404);
       throw new Error('User not found');
     }
-    res.status(200).json(user.followers);
+    user = await cleanUserRelationships(user);
+    const populated = await user.populate('followers', 'username profilePicture bio');
+    res.status(200).json(populated.followers);
   } catch (error) {
     next(error);
   }
@@ -414,12 +500,14 @@ export const getFollowers = async (req, res, next) => {
 
 export const getFollowing = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).populate('following', 'username profilePicture bio');
+    let user = await User.findById(req.params.id);
     if (!user) {
       res.status(404);
       throw new Error('User not found');
     }
-    res.status(200).json(user.following);
+    user = await cleanUserRelationships(user);
+    const populated = await user.populate('following', 'username profilePicture bio');
+    res.status(200).json(populated.following);
   } catch (error) {
     next(error);
   }
@@ -427,12 +515,14 @@ export const getFollowing = async (req, res, next) => {
 
 export const getFriendsList = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).populate('friends', 'username profilePicture bio');
+    let user = await User.findById(req.params.id);
     if (!user) {
       res.status(404);
       throw new Error('User not found');
     }
-    res.status(200).json(user.friends);
+    user = await cleanUserRelationships(user);
+    const populated = await user.populate('friends', 'username profilePicture bio');
+    res.status(200).json(populated.friends);
   } catch (error) {
     next(error);
   }

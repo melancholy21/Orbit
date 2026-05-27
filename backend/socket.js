@@ -53,7 +53,7 @@ const initSocket = (httpServer) => {
         const room = await Room.findByIdAndUpdate(
           roomId,
           { $addToSet: { participants: socket.user._id } },
-          { new: true }
+          { returnDocument: 'after' }
         ).populate('participants', 'username profilePicture firstName lastName');
 
         if (!room) return;

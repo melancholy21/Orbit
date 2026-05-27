@@ -22,6 +22,27 @@ const formatTime = (ms) => {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 };
 
+const getSpotifyTrackUrl = (spotifyTrack, queueTrack) => {
+  if (spotifyTrack?.id) {
+    return `https://open.spotify.com/track/${spotifyTrack.id}`;
+  }
+  if (spotifyTrack?.uri) {
+    const parts = spotifyTrack.uri.split(':');
+    if (parts[1] === 'track' && parts[2]) {
+      return `https://open.spotify.com/track/${parts[2]}`;
+    }
+  }
+  if (queueTrack?.url) {
+    if (queueTrack.url.includes('open.spotify.com/track/')) {
+      return queueTrack.url;
+    }
+    if (queueTrack.url.startsWith('spotify:track:')) {
+      return `https://open.spotify.com/track/${queueTrack.url.split('spotify:track:')[1]}`;
+    }
+  }
+  return null;
+};
+
 const Lobby = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -389,8 +410,12 @@ const Lobby = () => {
             disabled={isConnectingSpotify}
             className="w-full gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold h-13 rounded-full text-base"
           >
-            {isConnectingSpotify ? <Loader2 className="animate-spin" size={18} /> : <Music size={18} />}
-            Connect Spotify
+            {isConnectingSpotify ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+            )}
+            Connect with Spotify
           </Button>
         </div>
       </div>
@@ -646,9 +671,23 @@ const Lobby = () => {
 
           {/* Track Info */}
           <div className="text-center w-full max-w-[320px] mb-2 sm:mb-4 flex-shrink-0 spotify-info-gap">
-            <h2 className="text-base xs:text-lg sm:text-xl font-black text-foreground truncate spotify-track-title">
-              {currentSpotifyTrack?.name || currentTrack?.title || 'No Track'}
-            </h2>
+            {getSpotifyTrackUrl(currentSpotifyTrack, currentTrack) ? (
+              <h2 className="text-base xs:text-lg sm:text-xl font-black text-foreground truncate spotify-track-title flex items-center justify-center gap-1.5 hover:text-[#1DB954] transition-colors">
+                <a 
+                  href={getSpotifyTrackUrl(currentSpotifyTrack, currentTrack)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline flex items-center justify-center gap-1.5 truncate"
+                >
+                  {currentSpotifyTrack?.name || currentTrack?.title || 'No Track'}
+                  <svg className="w-4 h-4 fill-current text-[#1DB954] inline-block shrink-0" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                </a>
+              </h2>
+            ) : (
+              <h2 className="text-base xs:text-lg sm:text-xl font-black text-foreground truncate spotify-track-title">
+                {currentSpotifyTrack?.name || currentTrack?.title || 'No Track'}
+              </h2>
+            )}
             <p className="text-xs xs:text-sm text-muted-foreground truncate mt-0.5 sm:mt-1 spotify-track-artist">
               {currentSpotifyTrack?.artists?.map(a => a.name).join(', ') || 'Unknown Artist'}
             </p>

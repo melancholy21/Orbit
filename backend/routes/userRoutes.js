@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { getUserProfile, toggleFollow, searchUsers, updateStatus, getFriendsWithStatus, nudgeUser, getNotifications, updateProfilePicture, updateProfile, sendFriendRequest, acceptFriendRequest, removeFriend, getFollowers, getFollowing, getFriendsList, getSuggestedUsers } from '../controllers/userController.js';
+import { getUserProfile, toggleFollow, searchUsers, updateStatus, getFriendsWithStatus, nudgeUser, getNotifications, updateProfilePicture, updateProfile, sendFriendRequest, acceptFriendRequest, removeFriend, cancelFriendRequest, getFollowers, getFollowing, getFriendsList, getSuggestedUsers } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 router.get('/', protect, searchUsers);
@@ -19,4 +19,6 @@ router.post('/:id/nudge', protect, nudgeUser);
 router.post('/friends/:id/request', protect, sendFriendRequest);
 router.put('/friends/:id/accept', protect, acceptFriendRequest);
 router.delete('/friends/:id/remove', protect, removeFriend);
+router.delete('/friends/:id/cancel', protect, cancelFriendRequest);
 export default router;
+

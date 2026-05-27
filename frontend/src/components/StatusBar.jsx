@@ -61,6 +61,11 @@ const StatusBar = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    setCurrentUserStatus(user?.status || null);
+  }, [user?.status]);
+
+
   const clearMyStatus = async (e) => {
     e.stopPropagation();
     try {
