@@ -133,12 +133,14 @@ const DTRSection = ({
             )}
 
             {/* Settings toggle */}
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => { setShowSettings(!showSettings); setNewTarget(target.toString()); setNewInitialHours(initialHours.toString()); }}
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mt-3 py-2.5 px-4 rounded-full border border-border/50 hover:border-primary/30 transition-all active:scale-95"
+              className="mt-3 gap-1.5 text-xs text-muted-foreground hover:text-foreground border-border/50 active:scale-95"
             >
-              <Settings size={16} /> Settings
-            </button>
+              <Settings size={14} /> Settings
+            </Button>
           </div>
         </div>
 

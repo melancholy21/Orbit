@@ -75,8 +75,19 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Poppins', sans-serif;
   }
 }
 
@@ -87,11 +98,15 @@
   }
 
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
   }
 }
 
@@ -101,6 +116,7 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
 }
@@ -130,29 +146,42 @@ input[type="number"] {
     width: 14rem !important;
     height: 14rem !important;
   }
+
   .spotify-play-btn {
     width: 4rem !important;
     height: 4rem !important;
   }
+
   .spotify-control-circle {
     width: 3rem !important;
     height: 3rem !important;
   }
+
   .spotify-track-title {
-    font-size: 1.25rem !important; /* text-xl */
+    font-size: 1.25rem !important;
+    /* text-xl */
   }
+
   .spotify-track-artist {
-    font-size: 0.875rem !important; /* text-sm */
+    font-size: 0.875rem !important;
+    /* text-sm */
   }
+
   .spotify-container-gap {
-    margin-bottom: 1.5rem !important; /* mb-6 */
+    margin-bottom: 1.5rem !important;
+    /* mb-6 */
   }
+
   .spotify-info-gap {
-    margin-bottom: 1rem !important; /* mb-4 */
+    margin-bottom: 1rem !important;
+    /* mb-4 */
   }
+
   .spotify-controls-gap {
-    margin-bottom: 1rem !important; /* mb-4 */
-    gap: 1rem !important; /* gap-4 */
+    margin-bottom: 1rem !important;
+    /* mb-4 */
+    gap: 1rem !important;
+    /* gap-4 */
   }
 }
 

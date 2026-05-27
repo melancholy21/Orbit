@@ -214,7 +214,7 @@ const Lobby = () => {
     if (token) {
       dispatch(updateSpotifyToken(token));
       setSearchParams({});
-      
+
       // Auto-popup setup guide for mobile users upon redirecting back
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       if (isMobile) {
@@ -322,7 +322,7 @@ const Lobby = () => {
   const handleAddToQueue = async () => {
     if (!trackUrl.trim()) return;
     let finalUrl = trackUrl.trim();
-    
+
     const match = finalUrl.match(/track[/:]([a-zA-Z0-9]{22})/);
     if (!match) {
       toast.error('Invalid Spotify track URL. Please copy a track link.');
@@ -347,7 +347,7 @@ const Lobby = () => {
     if (!resolvedTitle) {
       resolvedTitle = 'Spotify Track';
     }
-    
+
     addToQueue(finalUrl, resolvedTitle);
     setTrackUrl('');
     setTrackTitle('');
@@ -413,7 +413,7 @@ const Lobby = () => {
             {isConnectingSpotify ? (
               <Loader2 className="animate-spin" size={18} />
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>
             )}
             Connect with Spotify
           </Button>
@@ -497,7 +497,7 @@ const Lobby = () => {
                 <X size={20} />
               </button>
               <h3 className="text-lg font-bold text-foreground mb-4">Create Music Lobby</h3>
-              
+
               <div className="space-y-4 text-left">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Lobby Name</label>
@@ -508,7 +508,7 @@ const Lobby = () => {
                     className="h-10 rounded-lg bg-white/5 border-white/10"
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between border-t border-white/5 pt-3">
                   <span className="text-xs text-muted-foreground">Private Room (Password Required)</span>
                   <input
@@ -541,7 +541,7 @@ const Lobby = () => {
                       setNewRoomName('');
                       setNewRoomPrivate(false);
                       setNewRoomPassword('');
-                    } catch (err) {}
+                    } catch (err) { }
                   }}
                   className="w-full bg-violet-600 hover:bg-violet-500 rounded-full h-11"
                 >
@@ -561,7 +561,7 @@ const Lobby = () => {
               </button>
               <h3 className="text-lg font-bold text-foreground mb-2">Private Lobby</h3>
               <p className="text-xs text-muted-foreground mb-4">Enter password to join "{selectedRoomToJoin?.name}"</p>
-              
+
               <div className="space-y-4 text-left">
                 <Input
                   type="password"
@@ -577,7 +577,7 @@ const Lobby = () => {
                       setShowPasswordModal(false);
                       setSelectedRoomToJoin(null);
                       setJoinPassword('');
-                    } catch (err) {}
+                    } catch (err) { }
                   }}
                   className="w-full bg-violet-600 hover:bg-violet-500 rounded-full h-11"
                 >
@@ -673,14 +673,14 @@ const Lobby = () => {
           <div className="text-center w-full max-w-[320px] mb-2 sm:mb-4 flex-shrink-0 spotify-info-gap">
             {getSpotifyTrackUrl(currentSpotifyTrack, currentTrack) ? (
               <h2 className="text-base xs:text-lg sm:text-xl font-black text-foreground truncate spotify-track-title flex items-center justify-center gap-1.5 hover:text-[#1DB954] transition-colors">
-                <a 
+                <a
                   href={getSpotifyTrackUrl(currentSpotifyTrack, currentTrack)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:underline flex items-center justify-center gap-1.5 truncate"
                 >
                   {currentSpotifyTrack?.name || currentTrack?.title || 'No Track'}
-                  <svg className="w-4 h-4 fill-current text-[#1DB954] inline-block shrink-0" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                  <svg className="w-4 h-4 fill-current text-[#1DB954] inline-block shrink-0" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>
                 </a>
               </h2>
             ) : (
@@ -788,9 +788,9 @@ const Lobby = () => {
                         const val = parseFloat(e.target.value);
                         setVolume(val);
                         if (val === 0) {
-                           setIsMuted(true);
+                          setIsMuted(true);
                         } else {
-                           setIsMuted(false);
+                          setIsMuted(false);
                         }
                       }}
                       className="w-full h-1 accent-violet-500 cursor-pointer"
@@ -990,7 +990,7 @@ const Lobby = () => {
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="bg-zinc-900/95 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setShowHelpModal(false)}
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
             >
@@ -1002,7 +1002,7 @@ const Lobby = () => {
               </div>
               <h3 className="text-base font-bold text-foreground">Spotify Setup Guide</h3>
             </div>
-            
+
             <div className="space-y-4 text-xs leading-relaxed text-muted-foreground">
               <div>
                 <h4 className="font-bold text-foreground flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wider text-violet-400">
@@ -1028,7 +1028,7 @@ const Lobby = () => {
               </div>
             </div>
 
-            <Button 
+            <Button
               onClick={() => setShowHelpModal(false)}
               className="w-full mt-6 h-10 rounded-full bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors cursor-pointer"
             >
@@ -1048,7 +1048,7 @@ const Lobby = () => {
                 <X size={20} />
               </button>
               <h3 className="text-base font-bold text-foreground mb-4">Invite Friends</h3>
-              
+
               <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
                 {friendsLoading ? (
                   <div className="flex justify-center py-8">

@@ -121,7 +121,7 @@ const Layout = () => {
           <div className="bg-primary text-primary-foreground p-1.5 rounded-md shadow-[0_2px_8px_rgba(66,133,244,0.4)]">
             <Orbit size={18} />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-wide" style={{ fontFamily: '"Dancing Script", cursive' }}>Orbit</h1>
+          <h1 className="text-2xl font-black text-foreground tracking-wider" style={{ fontFamily: '"Poppins", sans-serif' }}>Orbit</h1>
         </div>
 
         {/* Action Icons */}
