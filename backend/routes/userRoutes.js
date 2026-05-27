@@ -10,7 +10,7 @@ router.get('/suggestions', protect, getSuggestedUsers);
 router.get('/me/notifications', protect, getNotifications);
 router.put('/me/profile-picture', protect, updateProfilePicture);
 router.put('/me', protect, updateProfile);
-router.get('/:id', getUserProfile);
+router.get('/:id', protect, getUserProfile);
 router.get('/:id/followers', protect, getFollowers);
 router.get('/:id/following', protect, getFollowing);
 router.get('/:id/friends', protect, getFriendsList);

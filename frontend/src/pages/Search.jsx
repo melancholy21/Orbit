@@ -118,7 +118,7 @@ const Search = () => {
           <SearchIcon size={18} />
         </div>
         <Input
-          placeholder="Search by username..."
+          placeholder="Search by name or username..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-10 h-12 rounded-xl bg-card border-border shadow-sm"
@@ -154,7 +154,9 @@ const Search = () => {
                   <span className="font-bold text-sm truncate">
                     {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                   </span>
-                  <span className="text-xs text-muted-foreground truncate">@{u.username}</span>
+                  {(u.firstName || u.lastName) && (
+                    <span className="text-xs text-muted-foreground truncate">@{u.username}</span>
+                  )}
                 </div>
               </div>
               
@@ -200,7 +202,7 @@ const Search = () => {
         <div className="mt-8">
           <div className="flex items-center gap-2 mb-4">
             <Users size={18} className="text-primary" />
-            <h3 className="text-lg font-bold">Suggested Friends</h3>
+            <h3 className="text-lg font-bold">People You May Know</h3>
           </div>
 
           {suggestionsLoading ? (
@@ -230,7 +232,9 @@ const Search = () => {
                       <span className="font-bold text-sm truncate">
                         {s.firstName || s.lastName ? `${s.firstName || ''} ${s.lastName || ''}`.trim() : s.username}
                       </span>
-                      <span className="text-xs text-muted-foreground truncate">@{s.username}</span>
+                      {(s.firstName || s.lastName) && (
+                        <span className="text-xs text-muted-foreground truncate">@{s.username}</span>
+                      )}
                       <span className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">{s.followers?.length || 0} followers</span>
                     </div>
                   </div>

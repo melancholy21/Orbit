@@ -58,7 +58,8 @@ export const callback = async (req, res) => {
       headers: {
         'Authorization': 'Basic ' + (Buffer.from(process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET).toString('base64')),
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      },
+      timeout: 5000
     };
 
     const response = await axios(authOptions);
@@ -66,11 +67,13 @@ export const callback = async (req, res) => {
 
     // Save tokens to user
     if (orbitUserId) {
-      await User.findByIdAndUpdate(orbitUserId, {
-        spotifyAccessToken: access_token,
-        spotifyRefreshToken: refresh_token,
-        spotifyTokenExpiry: new Date(Date.now() + expires_in * 1000)
-      });
+      const user = await User.findById(orbitUserId);
+      if (user) {
+        user.spotifyAccessToken = access_token;
+        user.spotifyRefreshToken = refresh_token;
+        user.spotifyTokenExpiry = new Date(Date.now() + expires_in * 1000);
+        await user.save();
+      }
     }
 
     // Redirect back to frontend
@@ -114,7 +117,8 @@ export const refreshToken = async (req, res) => {
       headers: {
         'Authorization': 'Basic ' + (Buffer.from(process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET).toString('base64')),
         'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      },
+      timeout: 5000
     };
 
     const response = await axios(authOptions);

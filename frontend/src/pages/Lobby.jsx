@@ -625,35 +625,35 @@ const Lobby = () => {
       {/* ─── PLAYER TAB VIEW ─── */}
       {activeTab === 'player' && (
         <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden min-h-0">
-          {/* Album Art */}
-          <div className="relative mb-6 flex-shrink-0">
+          {/* Album Art - Viewport-height responsive container */}
+          <div className="relative mb-3 sm:mb-6 flex-shrink-0 spotify-container-gap">
             {albumArt ? (
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/20 rounded-2xl" />
                 <img
                   src={albumArt}
                   alt="Album"
-                  className={`w-56 h-56 sm:w-64 sm:h-64 object-cover shadow-2xl shadow-black/40 transition-all duration-700 ${isPlaying ? 'rounded-full animate-[spin_20s_linear_infinite]' : 'rounded-2xl'
+                  className={`w-[24vh] h-[24vh] max-w-[224px] max-h-[224px] min-w-[120px] min-h-[120px] object-cover shadow-2xl shadow-black/40 transition-all duration-700 spotify-album-art ${isPlaying ? 'rounded-full animate-[spin_20s_linear_infinite]' : 'rounded-2xl'
                     }`}
                 />
               </div>
             ) : (
-              <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl bg-gradient-to-br from-violet-900/50 to-emerald-900/50 flex items-center justify-center border border-white/5">
-                <Music size={64} className="text-white/20" />
+              <div className="w-[24vh] h-[24vh] max-w-[224px] max-h-[224px] min-w-[120px] min-h-[120px] rounded-2xl bg-gradient-to-br from-violet-900/50 to-emerald-900/50 flex items-center justify-center border border-white/5 spotify-album-art">
+                <Music className="text-white/20 w-[8vh] h-[8vh] max-w-[48px] max-h-[48px] min-w-[32px] min-h-[32px]" />
               </div>
             )}
           </div>
 
           {/* Track Info */}
-          <div className="text-center w-full max-w-[320px] mb-4 flex-shrink-0">
-            <h2 className="text-xl font-black text-foreground truncate">
+          <div className="text-center w-full max-w-[320px] mb-2 sm:mb-4 flex-shrink-0 spotify-info-gap">
+            <h2 className="text-base xs:text-lg sm:text-xl font-black text-foreground truncate spotify-track-title">
               {currentSpotifyTrack?.name || currentTrack?.title || 'No Track'}
             </h2>
-            <p className="text-sm text-muted-foreground truncate mt-1">
+            <p className="text-xs xs:text-sm text-muted-foreground truncate mt-0.5 sm:mt-1 spotify-track-artist">
               {currentSpotifyTrack?.artists?.map(a => a.name).join(', ') || 'Unknown Artist'}
             </p>
             {currentTrack?.addedBy?.username && (
-              <p className="text-[10px] text-muted-foreground/60 mt-1">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 mt-0.5 sm:mt-1">
                 Added by {currentTrack.addedBy.username}
               </p>
             )}
@@ -668,65 +668,65 @@ const Lobby = () => {
                 activateAudioSync();
                 requestSync();
               }}
-              className="mb-4 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 rounded-full px-4 py-1 h-8 animate-pulse shrink-0 cursor-pointer"
+              className="mb-2 sm:mb-4 text-[10px] sm:text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 rounded-full px-3 sm:px-4 py-1 h-7 sm:h-8 animate-pulse shrink-0 cursor-pointer"
             >
               Listen on this device
             </Button>
           )}
 
           {/* Progress Bar */}
-          <div className="w-full max-w-[320px] mb-3 flex-shrink-0">
+          <div className="w-full max-w-[320px] mb-2 sm:mb-3 flex-shrink-0">
             <div
               ref={progressBarRef}
-              className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden cursor-pointer group"
+              className="h-1 w-full bg-white/10 rounded-full overflow-hidden cursor-pointer group"
             >
               <div
-                className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 rounded-full transition-all duration-1000 ease-linear relative group-hover:h-2"
+                className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 rounded-full transition-all duration-1000 ease-linear relative group-hover:h-1.5"
                 style={{ width: `${progressPercent}%` }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
             <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-muted-foreground">{formatTime(progressMs)}</span>
-              <span className="text-[10px] text-muted-foreground">{formatTime(durationMs)}</span>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground">{formatTime(progressMs)}</span>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground">{formatTime(durationMs)}</span>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex flex-col items-center justify-center gap-4 mb-4 flex-shrink-0 w-full max-w-[320px]">
+          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 mb-2 sm:mb-4 flex-shrink-0 w-full max-w-[320px] spotify-controls-gap">
             {/* First line: Previous, Play/Pause, Next */}
-            <div className="flex items-center justify-center gap-8">
+            <div className="flex items-center justify-center gap-6 sm:gap-8">
               <button
                 onClick={previousTrack}
-                className="text-muted-foreground active:text-foreground active:scale-90 transition-all p-3 cursor-pointer"
+                className="text-muted-foreground active:text-foreground active:scale-90 transition-all p-2 sm:p-3 cursor-pointer"
                 title="Previous Track"
               >
-                <SkipBack size={26} className="fill-current" />
+                <SkipBack className="fill-current w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" />
               </button>
               <button
                 onClick={togglePlay}
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer"
+                className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer flex-shrink-0 spotify-play-btn"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
-                {isPlaying ? <Pause size={28} className="fill-current" /> : <Play size={28} className="fill-current ml-1" />}
+                {isPlaying ? <Pause className="fill-current w-[20px] h-[20px] sm:w-[28px] sm:h-[28px]" /> : <Play className="fill-current w-[20px] h-[20px] sm:w-[28px] sm:h-[28px] ml-0.5 sm:ml-1" />}
               </button>
               <button
                 onClick={skipTrack}
-                className="text-muted-foreground active:text-foreground active:scale-90 transition-all p-3 cursor-pointer"
+                className="text-muted-foreground active:text-foreground active:scale-90 transition-all p-2 sm:p-3 cursor-pointer"
                 title="Next Track"
               >
-                <SkipForward size={26} className="fill-current" />
+                <SkipForward className="fill-current w-[20px] h-[20px] sm:w-[26px] sm:h-[26px]" />
               </button>
             </div>
 
             {/* Second line: 4 Circles with icons */}
-            <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center justify-center gap-4 sm:gap-5">
               {/* Volume Circle */}
               <div ref={volumeRef} className="relative">
                 <button
                   onClick={() => setShowVolumeSlider(!showVolumeSlider)}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all active:scale-90 cursor-pointer ${showVolumeSlider
+                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all active:scale-90 cursor-pointer spotify-control-circle ${showVolumeSlider
                     ? 'bg-violet-500/20 border-violet-500/40 text-violet-400 font-bold shadow-md shadow-violet-500/10'
                     : isMuted || volume === 0
                       ? 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -734,7 +734,7 @@ const Lobby = () => {
                     }`}
                   title="Volume"
                 >
-                  {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                  {isMuted || volume === 0 ? <VolumeX className="w-[16px] h-[16px] sm:w-[20px] sm:h-[20px]" /> : <Volume2 className="w-[16px] h-[16px] sm:w-[20px] sm:h-[20px]" />}
                 </button>
                 {/* Horizontal slider popover on click/tap */}
                 {showVolumeSlider && (
@@ -749,9 +749,9 @@ const Lobby = () => {
                         const val = parseFloat(e.target.value);
                         setVolume(val);
                         if (val === 0) {
-                          setIsMuted(true);
+                           setIsMuted(true);
                         } else {
-                          setIsMuted(false);
+                           setIsMuted(false);
                         }
                       }}
                       className="w-full h-1 accent-violet-500 cursor-pointer"
@@ -766,37 +766,37 @@ const Lobby = () => {
               {/* Randomize (Shuffle) Circle */}
               <button
                 onClick={handleShuffle}
-                className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-muted-foreground active:text-foreground active:scale-90 transition-all cursor-pointer hover:bg-white/10 hover:border-white/20"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-muted-foreground active:text-foreground active:scale-90 transition-all cursor-pointer hover:bg-white/10 hover:border-white/20 spotify-control-circle"
                 title="Shuffle Queue"
               >
-                <Shuffle size={20} />
+                <Shuffle className="w-[16px] h-[16px] sm:w-[20px] sm:h-[20px]" />
               </button>
 
               {/* Loop Circle */}
               <button
                 onClick={toggleRepeat}
-                className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all relative active:scale-90 cursor-pointer ${repeatMode !== 'off'
+                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border transition-all relative active:scale-90 cursor-pointer spotify-control-circle ${repeatMode !== 'off'
                   ? 'bg-violet-500/10 border-violet-500/30 text-violet-400 font-bold'
                   : 'bg-white/5 border-white/10 text-muted-foreground active:text-foreground hover:bg-white/10 hover:border-white/20'
                   }`}
                 title={repeatMode === 'track' ? 'Loop 1 Time' : repeatMode === 'queue' ? 'Loop Entire Queue' : 'Loop Off'}
               >
-                <Repeat size={20} />
+                <Repeat className="w-[16px] h-[16px] sm:w-[20px] sm:h-[20px]" />
                 {repeatMode === 'track' && (
                   <span className="absolute -bottom-1 -right-1 text-[8px] bg-violet-600 text-white rounded-full w-4 h-4 flex items-center justify-center scale-90 border border-background font-semibold">1</span>
                 )}
                 {repeatMode === 'queue' && (
-                  <span className="absolute -bottom-1 -right-1 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center scale-90 border border-background font-semibold">∞</span>
+                  <span className="absolute -bottom-1 -right-1 text-[8px] bg-green-600 text-white rounded-full w-4 h-4 flex items-center justify-center scale-90 border border-background font-semibold font-bold">∞</span>
                 )}
               </button>
 
               {/* Liked Songs Circle */}
               <button
                 onClick={() => { setActiveTab('queue'); setQueueSubTab('library'); }}
-                className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-muted-foreground active:text-foreground active:scale-90 transition-all cursor-pointer hover:bg-white/10 hover:border-white/20"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-muted-foreground active:text-foreground active:scale-90 transition-all cursor-pointer hover:bg-white/10 hover:border-white/20 spotify-control-circle"
                 title="Liked Songs"
               >
-                <Heart size={20} />
+                <Heart className="w-[16px] h-[16px] sm:w-[20px] sm:h-[20px]" />
               </button>
             </div>
           </div>

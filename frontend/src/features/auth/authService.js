@@ -2,14 +2,27 @@ import axios from 'axios';
 
 const API_URL = '/api/auth/';
 
-// Register user
+// Register user (Step 1 — sends OTP, does NOT log in)
 const register = async (userData) => {
   const response = await axios.post(API_URL + 'register', userData);
+  // Do NOT save to localStorage — user is not verified yet
+  return response.data;
+};
+
+// Verify email (Step 2 — validates OTP, creates user, returns JWT)
+const verifyEmail = async (verificationData) => {
+  const response = await axios.post(API_URL + 'verify-email', verificationData);
 
   if (response.data) {
     localStorage.setItem('user', JSON.stringify(response.data));
   }
 
+  return response.data;
+};
+
+// Resend verification code
+const resendCode = async (email) => {
+  const response = await axios.post(API_URL + 'resend-code', { email });
   return response.data;
 };
 
@@ -42,6 +55,8 @@ const getMe = async (token) => {
 
 const authService = {
   register,
+  verifyEmail,
+  resendCode,
   login,
   logout,
   getMe,

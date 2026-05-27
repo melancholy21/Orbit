@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useLobby } from '../context/LobbyContext'; // For global socket
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const Chat = () => {
   const { userId } = useParams(); // ID of the user we are chatting with
@@ -27,6 +28,7 @@ const Chat = () => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState('');
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [deleteConfirmMsgId, setDeleteConfirmMsgId] = useState(null);
   const fileInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -159,8 +161,13 @@ const Chat = () => {
     }
   };
 
-  const handleDeleteMessage = async (msgId) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) return;
+  const handleDeleteMessage = (msgId) => {
+    setDeleteConfirmMsgId(msgId);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!deleteConfirmMsgId) return;
+    const msgId = deleteConfirmMsgId;
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       await axios.delete(`/api/messages/${msgId}`, config);
@@ -178,6 +185,8 @@ const Chat = () => {
     } catch (err) {
       console.error('Failed to delete message', err);
       toast.error('Failed to delete message');
+    } finally {
+      setDeleteConfirmMsgId(null);
     }
   };
 
@@ -436,6 +445,15 @@ const Chat = () => {
           </Button>
         </form>
       </div>
+      <ConfirmDialog
+        isOpen={Boolean(deleteConfirmMsgId)}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This will remove it for both you and the recipient."
+        onConfirm={confirmDeleteMessage}
+        onCancel={() => setDeleteConfirmMsgId(null)}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 };

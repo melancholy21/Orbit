@@ -3,6 +3,7 @@ import express from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -67,7 +68,7 @@ if (hasCloudinary) {
   });
 }
 
-router.post('/', (req, res) => {
+router.post('/', protect, (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       return res.status(400).send({ message: err.message });

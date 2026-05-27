@@ -31,6 +31,10 @@ export const getPosts = async (req, res, next) => {
     const friendIds = req.user.friends.map(id => id.toString());
     const followingIds = req.user.following.map(id => id.toString());
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Fallback to 50 for backward compatibility
+    const skip = (page - 1) * limit;
+
     // Facebook-style visibility rules:
     // 1. My own posts
     // 2. Posts authored by my friends (both friends and public visibility)
@@ -57,7 +61,8 @@ export const getPosts = async (req, res, next) => {
         ]
       })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .skip(skip)
+      .limit(limit);
     res.status(200).json(posts);
   } catch (error) {
     next(error);
@@ -272,6 +277,10 @@ export const getUserPosts = async (req, res, next) => {
     const isMe = req.user.id === targetUserId;
     const isFriend = req.user.friends.some(id => id.toString() === targetUserId);
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Fallback to 50 for backward compatibility
+    const skip = (page - 1) * limit;
+
     let query = {};
     if (isMe || isFriend) {
       // Show all posts authored or shared by this user
@@ -302,7 +311,8 @@ export const getUserPosts = async (req, res, next) => {
         ]
       })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .skip(skip)
+      .limit(limit);
     res.status(200).json(posts);
   } catch (error) {
     next(error);

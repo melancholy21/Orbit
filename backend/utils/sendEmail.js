@@ -1,0 +1,71 @@
+import nodemailer from 'nodemailer';
+
+/**
+ * Sends an email using Nodemailer.
+ *
+ * If SMTP environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)
+ * are configured, it sends a real email through the cloud provider.
+ * Otherwise, it falls back to logging the OTP to the console for dev testing.
+ */
+const sendEmail = async ({ email, subject, message, html }) => {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || smtpUser || 'noreply@orbit.app';
+
+  // If SMTP credentials are not set, fall back to console logging
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.log('\n══════════════════════════════════════════');
+    console.log('📧  EMAIL (Dev Console Fallback)');
+    console.log('══════════════════════════════════════════');
+    console.log(`  To:      ${email}`);
+    console.log(`  Subject: ${subject}`);
+    console.log(`  Body:    ${message}`);
+    console.log('══════════════════════════════════════════\n');
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: parseInt(smtpPort, 10) || 587,
+    secure: parseInt(smtpPort, 10) === 465, // true for port 465
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Orbit" <${smtpFrom}>`,
+    to: email,
+    subject,
+    text: message,
+    html,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('\n❌ SMTP Email sending failed:', error.message);
+
+    // Check if it's a testing limitation (e.g. Resend free tier 550 error)
+    const isTestingLimit = error.message.includes('550') || error.message.includes('testing emails');
+
+    console.log('\n══════════════════════════════════════════');
+    console.log(`📧  EMAIL FALLBACK (${isTestingLimit ? 'Resend Testing Limit' : 'SMTP Failed'})`);
+    console.log('══════════════════════════════════════════');
+    console.log(`  To:      ${email}`);
+    console.log(`  Subject: ${subject}`);
+    console.log(`  Body:    ${message}`);
+    console.log('══════════════════════════════════════════\n');
+
+    // If it's a testing limitation, or we are in development, let it succeed so developers can still copy the OTP code from the console.
+    // Otherwise (actual production failure), throw the error.
+    if (process.env.NODE_ENV === 'production' && !isTestingLimit) {
+      throw error;
+    }
+  }
+};
+
+export default sendEmail;

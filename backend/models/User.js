@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { encrypt, decrypt } from '../utils/encryption.js';
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -22,6 +23,10 @@ const userSchema = new mongoose.Schema({
     minlength: 6
   },
   profilePicture: {
+    type: String,
+    default: ''
+  },
+  coverPicture: {
     type: String,
     default: ''
   },
@@ -69,29 +74,52 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  spotifyAccessToken: { type: String, default: '' },
-  spotifyRefreshToken: { type: String, default: '' },
+  spotifyAccessToken: {
+    type: String,
+    default: '',
+    get: decrypt,
+    set: encrypt
+  },
+  spotifyRefreshToken: {
+    type: String,
+    default: '',
+    get: decrypt,
+    set: encrypt
+  },
   spotifyTokenExpiry: { type: Date, default: null },
   status: {
     isFree: { type: Boolean, default: false },
     emoji: { type: String, default: '' },
     text: { type: String, default: '' },
     expiresAt: { type: Date, default: null }
+  },
+  loginAttempts: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  lockUntil: {
+    type: Number,
+    default: 0
   }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  toJSON: { getters: true },
+  toObject: { getters: true }
+});
 
 userSchema.index({ followers: 1 });
 userSchema.index({ following: 1 });
 
 // Hash password before saving
-userSchema.pre('save', async function() {
+userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Compare password
-userSchema.methods.matchPassword = async function(enteredPassword) {
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

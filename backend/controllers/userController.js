@@ -4,7 +4,7 @@ import { onlineUsers } from '../socket.js';
 
 export const getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select('-password -spotifyAccessToken -spotifyRefreshToken -spotifyTokenExpiry -email -loginAttempts -lockUntil');
 
     if (!user) {
       res.status(404);
@@ -69,14 +69,29 @@ export const toggleFollow = async (req, res, next) => {
 
 export const searchUsers = async (req, res, next) => {
   try {
-    const keyword = req.query.search ? {
-      username: {
-        $regex: req.query.search,
-        $options: 'i'
-      }
-    } : {};
+    let keyword = {};
+    if (req.query.search) {
+      const searchVal = req.query.search.trim();
+      const searchTerms = searchVal.split(/\s+/);
+      
+      keyword = {
+        $or: [
+          { username: { $regex: searchVal, $options: 'i' } },
+          { firstName: { $regex: searchVal, $options: 'i' } },
+          { lastName: { $regex: searchVal, $options: 'i' } },
+          {
+            $and: searchTerms.map(term => ({
+              $or: [
+                { firstName: { $regex: term, $options: 'i' } },
+                { lastName: { $regex: term, $options: 'i' } }
+              ]
+            }))
+          }
+        ]
+      };
+    }
 
-    const users = await User.find({ ...keyword, _id: { $ne: req.user._id } }).select('-password');
+    const users = await User.find({ ...keyword, _id: { $ne: req.user._id } }).select('-password -spotifyAccessToken -spotifyRefreshToken -spotifyTokenExpiry -email -loginAttempts -lockUntil');
     res.status(200).json(users);
   } catch (error) {
     next(error);
@@ -207,7 +222,7 @@ export const updateProfile = async (req, res, next) => {
       throw new Error('User not found');
     }
 
-    const { bio, location, website, firstName, lastName, isOnboarded, profilePicture, spotifyAccessToken } = req.body;
+    const { bio, location, website, firstName, lastName, isOnboarded, profilePicture, coverPicture, spotifyAccessToken } = req.body;
     
     if (bio !== undefined) user.bio = bio;
     if (location !== undefined) user.location = location;
@@ -216,6 +231,7 @@ export const updateProfile = async (req, res, next) => {
     if (lastName !== undefined) user.lastName = lastName;
     if (isOnboarded !== undefined) user.isOnboarded = isOnboarded;
     if (profilePicture !== undefined) user.profilePicture = profilePicture;
+    if (coverPicture !== undefined) user.coverPicture = coverPicture;
     if (spotifyAccessToken !== undefined) user.spotifyAccessToken = spotifyAccessToken || '';
 
     await user.save();
@@ -225,6 +241,7 @@ export const updateProfile = async (req, res, next) => {
       username: user.username,
       email: user.email,
       profilePicture: user.profilePicture,
+      coverPicture: user.coverPicture,
       firstName: user.firstName,
       lastName: user.lastName,
       isOnboarded: user.isOnboarded,
@@ -439,7 +456,7 @@ export const getSuggestedUsers = async (req, res, next) => {
     const suggestions = await User.find({
       _id: { $nin: excludeIds }
     })
-      .select('username profilePicture bio followers')
+      .select('username profilePicture bio followers firstName lastName')
       .limit(10);
 
     res.status(200).json(suggestions);

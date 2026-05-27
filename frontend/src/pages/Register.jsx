@@ -21,7 +21,7 @@ const Register = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { user, isLoading, isError, isSuccess, message } = useSelector(
+  const { user, isLoading, isError, isSuccess, message, pendingEmail } = useSelector(
     (state) => state.auth
   );
 
@@ -30,12 +30,18 @@ const Register = () => {
       toast.error(message);
     }
 
-    if (isSuccess || user) {
+    // If registration succeeded, redirect to verification page
+    if (isSuccess && pendingEmail) {
+      navigate(`/verify-email?email=${encodeURIComponent(pendingEmail)}`);
+    }
+
+    // If already logged in, go home
+    if (user) {
       navigate('/');
     }
 
     dispatch(reset());
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [user, isError, isSuccess, message, pendingEmail, navigate, dispatch]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({

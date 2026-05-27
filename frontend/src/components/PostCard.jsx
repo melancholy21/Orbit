@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Separator } from '../components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import ConfirmDialog from './ConfirmDialog';
 
 const PostCard = ({ post: initialPost }) => {
   const dispatch = useDispatch();
@@ -34,6 +35,7 @@ const PostCard = ({ post: initialPost }) => {
   const [editVisibility, setEditVisibility] = useState('friends');
   const [editRemoveImage, setEditRemoveImage] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const sharingFriend = post.shares?.find(s => {
     const sId = typeof s === 'object' ? s._id : s;
@@ -77,9 +79,12 @@ const PostCard = ({ post: initialPost }) => {
   };
 
   const handleDeletePost = () => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      dispatch(deletePost(post._id));
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeletePost = () => {
+    dispatch(deletePost(post._id));
+    setShowDeleteConfirm(false);
   };
 
   const handleStartEdit = () => {
@@ -300,7 +305,7 @@ const PostCard = ({ post: initialPost }) => {
 
         {post.image && !editRemoveImage && (
           <div className="mt-4 rounded-lg overflow-hidden border border-border relative group">
-            <img src={post.image} alt="Post content" className="w-full h-auto object-cover" />
+            <img src={post.image} alt="Post content" className="w-full h-auto object-cover" loading="lazy" />
             {isEditing && (
               <button
                 onClick={() => setEditRemoveImage(true)}
@@ -468,6 +473,15 @@ const PostCard = ({ post: initialPost }) => {
           </div>
         )}
       </CardFooter>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        onConfirm={confirmDeletePost}
+        onCancel={() => setShowDeleteConfirm(false)}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </Card>
   );
 };

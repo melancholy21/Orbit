@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Camera, Users, UserCheck, Grid3X3, Loader2, Heart, MessageCircle, MapPin, Link as LinkIcon, Pencil, X, MessageSquare, Share, LayoutList, Trash2 } from 'lucide-react';
+import { Camera, Users, UserCheck, Grid3X3, Loader2, Heart, MessageCircle, MapPin, Link as LinkIcon, Pencil, X, MessageSquare, Share, LayoutList, Trash2, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Card } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
@@ -11,6 +11,7 @@ import { updateProfilePic, updateUser } from '../features/auth/authSlice';
 import PostCard from '../components/PostCard';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const Profile = () => {
   const { id } = useParams();
@@ -23,33 +24,43 @@ const Profile = () => {
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [friendsPreview, setFriendsPreview] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
   const [viewMode, setViewMode] = useState('timeline');
   
   // Edit Profile State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ bio: '', location: '', website: '' });
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', bio: '', location: '', website: '' });
   const [isSaving, setIsSaving] = useState(false);
 
   // User list modal state
   const [listModal, setListModal] = useState({ open: false, title: '', users: [], loading: false });
   const [listPage, setListPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, isDestructive: false });
 
   const fileInputRef = useRef(null);
+  const coverInputRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!targetUserId) return;
       setIsLoading(true);
       try {
-        const [profileData, postsData] = await Promise.all([
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const [profileData, postsData, friendsData] = await Promise.all([
           userService.getUserProfile(targetUserId, user.token),
           userService.getUserPosts(targetUserId, user.token),
+          axios.get(`/api/users/${targetUserId}/friends`, config).then(res => res.data).catch(() => []),
         ]);
         setProfile(profileData);
         setPosts(postsData);
+        setFriendsPreview(friendsData);
         setEditForm({
+          firstName: profileData.firstName || '',
+          lastName: profileData.lastName || '',
           bio: profileData.bio || '',
           location: profileData.location || '',
           website: profileData.website || ''
@@ -118,11 +129,76 @@ const Profile = () => {
     }
   };
 
-  const handleFollow = async () => {
-    const isCurrentlyFollowing = profile.followers?.includes(user._id);
-    if (isCurrentlyFollowing && !window.confirm('Are you sure you want to unfollow this user?')) {
+  const handleCoverUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
       return;
     }
+
+    setIsCoverUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const uploadConfig = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      const { data: uploadData } = await axios.post('/api/upload', formData, uploadConfig);
+
+      await userService.updateProfile({ coverPicture: uploadData.image }, user.token);
+
+      setProfile((prev) => ({ ...prev, coverPicture: uploadData.image }));
+      dispatch(updateUser({ coverPicture: uploadData.image }));
+
+      toast.success('Cover picture updated!');
+    } catch (error) {
+      toast.error('Failed to upload cover picture');
+      console.error(error);
+    } finally {
+      setIsCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    setIsCoverUploading(true);
+    try {
+      await userService.updateProfile({ coverPicture: '' }, user.token);
+      setProfile((prev) => ({ ...prev, coverPicture: '' }));
+      dispatch(updateUser({ coverPicture: '' }));
+      toast.success('Cover picture removed!');
+    } catch (error) {
+      toast.error('Failed to remove cover picture');
+      console.error(error);
+    } finally {
+      setIsCoverUploading(false);
+    }
+  };
+
+  const handleFollow = async () => {
+    const isCurrentlyFollowing = profile.followers?.includes(user._id);
+    if (isCurrentlyFollowing) {
+      setConfirmModal({
+        open: true,
+        title: 'Unfollow User',
+        message: `Are you sure you want to unfollow @${profile.username}?`,
+        onConfirm: executeFollowToggle,
+        isDestructive: true
+      });
+    } else {
+      executeFollowToggle();
+    }
+  };
+
+  const executeFollowToggle = async () => {
+    setConfirmModal(prev => ({ ...prev, open: false }));
     try {
       await axios.put(`/api/users/${targetUserId}/follow`, {}, {
         headers: { Authorization: `Bearer ${user.token}` }
@@ -154,20 +230,34 @@ const Profile = () => {
           friendRequestsSent: prev.friendRequestsSent?.filter(id => id !== user._id),
           followers: prev.followers?.includes(user._id) ? prev.followers : [...(prev.followers || []), user._id]
         }));
+        setFriendsPreview(prev => [...prev, user]);
         toast.success('Friend request accepted');
       } else if (action === 'remove') {
-        if (!window.confirm('Are you sure you want to unfriend this user?')) {
-          return;
-        }
-        await axios.delete(`/api/users/friends/${targetUserId}/remove`, config);
-        setProfile(prev => ({
-          ...prev,
-          friends: prev.friends?.filter(id => id !== user._id)
-        }));
-        toast.success('Friend removed');
+        setConfirmModal({
+          open: true,
+          title: 'Unfriend User',
+          message: `Are you sure you want to unfriend @${profile.username}?`,
+          onConfirm: () => executeUnfriendAction(config),
+          isDestructive: true
+        });
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to perform friend action');
+    }
+  };
+
+  const executeUnfriendAction = async (config) => {
+    setConfirmModal(prev => ({ ...prev, open: false }));
+    try {
+      await axios.delete(`/api/users/friends/${targetUserId}/remove`, config);
+      setProfile(prev => ({
+        ...prev,
+        friends: prev.friends?.filter(id => id !== user._id)
+      }));
+      setFriendsPreview(prev => prev.filter(f => f._id !== user._id));
+      toast.success('Friend removed');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to unfriend user');
     }
   };
 
@@ -225,232 +315,271 @@ const Profile = () => {
   const imagePosts = posts.filter(p => p.image);
 
   return (
-    <div className="flex flex-col items-center w-full pb-10 gap-6">
-      <Card className="w-full overflow-hidden border-border/50">
-        <div className="h-32 bg-gradient-to-br from-primary/40 via-primary/20 to-accent/30 relative flex justify-end p-4">
-           {isOwnProfile && (
-             <Button size="sm" variant="secondary" className="gap-2 backdrop-blur-md bg-background/50 hover:bg-background/80" onClick={() => setIsEditModalOpen(true)}>
-               <Pencil size={14} /> Edit Profile
-             </Button>
-           )}
+    <div className="flex flex-col items-center w-full pb-10 gap-6 max-w-2xl mx-auto px-4 md:px-0">
+      {/* Profile Card Header (Highly Polished Centered Layout) */}
+      <Card className="w-full overflow-hidden border-border/30 bg-card/30 backdrop-blur-md shadow-lg rounded-2xl">
+        {/* Cover Photo */}
+        <div className="relative h-36 md:h-44 w-full bg-muted overflow-hidden group">
+          {profile.coverPicture ? (
+            <img src={profile.coverPicture} alt="Cover" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-tr from-violet-600/25 via-indigo-600/15 to-fuchsia-600/20 backdrop-blur-md" />
+          )}
+          
+          {/* Edit/Remove Cover Button Overlay (Own Profile) - Placed at top-right to avoid overlap with profile picture */}
+          {isOwnProfile && (
+            <div className="absolute right-3 top-3 flex gap-2 z-30">
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                className="gap-1.5 backdrop-blur-md bg-background/70 hover:bg-background/90 text-foreground border border-border/40 shadow-md text-xs h-8 px-3 rounded-lg font-semibold"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={isCoverUploading}
+              >
+                {isCoverUploading ? <Loader2 className="animate-spin" size={12} /> : <Camera size={12} />}
+                Edit Cover
+              </Button>
+              {profile.coverPicture && (
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  className="gap-1.5 backdrop-blur-md bg-red-600/80 hover:bg-red-600/90 text-white border border-red-700/40 shadow-md text-xs h-8 px-2.5 rounded-lg"
+                  onClick={handleCoverRemove}
+                  disabled={isCoverUploading}
+                >
+                  <Trash2 size={12} />
+                </Button>
+              )}
+              <input type="file" ref={coverInputRef} accept="image/*" onChange={handleCoverUpload} className="hidden" />
+            </div>
+          )}
         </div>
 
-        <div className="px-6 pb-6">
-          <div className="flex flex-col items-center -mt-14 mb-4 relative z-10">
-            <div className="relative group mb-4">
-              <Avatar className="w-28 h-28 border-4 border-background shadow-lg ring-2 ring-primary/20">
-                <AvatarImage src={profile.profilePicture} alt={profile.username} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
-                  {(profile.firstName || profile.lastName) ? (profile.firstName ? profile.firstName.charAt(0).toUpperCase() : profile.lastName.charAt(0).toUpperCase()) : profile.username?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+        {/* Profile Content Container */}
+        <div className="px-6 pb-6 text-center flex flex-col items-center">
+          {/* Avatar (Centered & Overlapping) - Clickable for touch-friendly menu on mobile */}
+          <div 
+            className={`relative group shrink-0 z-10 -mt-14 ${isOwnProfile ? 'cursor-pointer' : ''}`}
+            onClick={() => isOwnProfile && setIsAvatarModalOpen(true)}
+          >
+            <Avatar className="w-28 h-28 md:w-32 md:h-32 border-4 border-background/40 backdrop-blur-sm shadow-lg ring-1 ring-border/30">
+              <AvatarImage src={profile.profilePicture} alt={profile.username} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
+                {(profile.firstName || profile.lastName) ? (profile.firstName ? profile.firstName.charAt(0).toUpperCase() : profile.lastName.charAt(0).toUpperCase()) : profile.username?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
 
-              {isOwnProfile && (
-                <>
-                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer border border-transparent"
-                      title="Upload Photo"
-                    >
-                      {isUploading ? (
-                        <Loader2 className="animate-spin" size={20} />
-                      ) : (
-                        <Camera size={20} />
-                      )}
-                    </button>
-                    {profile.profilePicture && (
-                      <button
-                        onClick={handleRemoveAvatar}
-                        disabled={isUploading}
-                        className="w-10 h-10 flex items-center justify-center bg-red-600/20 hover:bg-red-600/40 rounded-full text-red-200 hover:text-white transition-colors cursor-pointer border border-transparent"
-                        title="Remove Photo"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    )}
-                  </div>
-                  <input type="file" ref={fileInputRef} accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                  <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow-md border-2 border-background pointer-events-none z-10">
-                    <Camera size={12} />
-                  </div>
-                </>
-              )}
+            {isOwnProfile && (
+              <>
+                <input type="file" ref={fileInputRef} accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                <button 
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setIsAvatarModalOpen(true); }}
+                  className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2 shadow-md border-2 border-background/40 z-15 transition-transform active:scale-95 cursor-pointer flex items-center justify-center"
+                  title="Change Profile Picture"
+                >
+                  <Camera size={12} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* User Names & Username */}
+          <div className="mt-5">
+            <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">
+              {profile.firstName || profile.lastName ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() : profile.username}
+            </h1>
+            <p className="text-xs text-muted-foreground font-semibold mt-0.5">@{profile.username}</p>
+          </div>
+
+          {/* Status Badge */}
+          {profile.status && profile.status.expiresAt && new Date() < new Date(profile.status.expiresAt) && (profile.status.emoji || profile.status.text) && (
+            <div className="mt-4 inline-flex items-center gap-1.5 bg-primary/5 border border-primary/10 rounded-full px-3 py-1 shadow-sm text-xs text-primary font-semibold">
+              {profile.status.emoji && <span className="text-sm">{profile.status.emoji}</span>}
+              {profile.status.text && <span>{profile.status.text}</span>}
+              {profile.status.isFree && <span className="text-[9px] font-bold text-green-500 bg-green-500/10 px-1 py-0.5 rounded-full ml-1">Free</span>}
             </div>
-            
-            {!isOwnProfile && (
-              <div className="flex flex-col gap-2 items-center w-full max-w-xs mt-2 px-2">
-                {/* Row 1: Friend and Follow actions side-by-side */}
-                <div className="flex justify-center items-center gap-2 w-full">
-                  <div className="flex-1">
-                    {isFriend ? (
-                      <Button onClick={() => handleFriendAction('remove')} variant="outline" className="w-full gap-1.5 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/10 border-red-500/30 px-2 h-9">
-                        <UserCheck size={14} /> Unfriend
-                      </Button>
-                    ) : hasReceivedRequest ? (
-                      <Button onClick={() => handleFriendAction('accept')} variant="default" className="w-full gap-1.5 text-xs bg-green-600 hover:bg-green-700 px-2 h-9">
-                        <UserCheck size={14} /> Accept
-                      </Button>
-                    ) : hasSentRequest ? (
-                      <Button disabled variant="outline" className="w-full gap-1.5 text-xs px-2 h-9">
-                        <Users size={14} /> Sent
-                      </Button>
-                    ) : (
-                      <Button onClick={() => handleFriendAction('request')} variant="outline" className="w-full gap-1.5 text-xs px-2 h-9">
-                        <Users size={14} /> Add Friend
-                      </Button>
-                    )}
-                  </div>
+          )}
 
-                  <div className="flex-1">
-                    <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"} className="w-full text-xs h-9">
-                      {isFollowing ? 'Unfollow' : 'Follow'}
+          {/* Bio */}
+          {profile.bio ? (
+            <p className="text-sm text-foreground/90 mt-5 max-w-md leading-relaxed">{profile.bio}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic mt-5">No bio written yet.</p>
+          )}
+
+          {/* Location, Website, Joined Date */}
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-5 text-xs text-muted-foreground font-semibold">
+            {profile.location && (
+              <div className="flex items-center gap-1.5">
+                <MapPin size={14} className="text-muted-foreground/80" /> {profile.location}
+              </div>
+            )}
+            {profile.website && (
+              <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
+                <LinkIcon size={14} className="text-primary/80" /> {profile.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Calendar size={14} className="text-muted-foreground/80" /> Joined {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+            </div>
+          </div>
+
+          {/* Actions Row */}
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-6 w-full max-w-sm">
+            {isOwnProfile ? (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full gap-2 border-white/20 bg-white hover:bg-white/90 text-black h-9 rounded-xl font-bold text-xs shadow-md transition-all duration-300 active:scale-[0.98] group" 
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                <Pencil size={13} className="text-black transition-transform group-hover:rotate-12 duration-200" /> Edit Profile
+              </Button>
+            ) : (
+              <div className="flex w-full gap-2">
+                <div className="flex-1">
+                  {isFriend ? (
+                    <Button onClick={() => handleFriendAction('remove')} variant="outline" className="w-full gap-1.5 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/20 border-red-500/20 h-9 rounded-xl backdrop-blur-md bg-background/30 shadow-md">
+                      <UserCheck size={14} /> Unfriend
                     </Button>
-                  </div>
+                  ) : hasReceivedRequest ? (
+                    <Button onClick={() => handleFriendAction('accept')} variant="default" className="w-full gap-1.5 text-xs bg-green-600 hover:bg-green-700 h-9 rounded-xl text-white">
+                      <UserCheck size={14} /> Accept Request
+                    </Button>
+                  ) : hasSentRequest ? (
+                    <Button disabled variant="outline" className="w-full gap-1.5 text-xs h-9 rounded-xl backdrop-blur-md bg-background/20 text-muted-foreground border-border/20">
+                      <Users size={14} /> Request Sent
+                    </Button>
+                  ) : (
+                    <Button onClick={() => handleFriendAction('request')} variant="outline" className="w-full gap-1.5 text-xs h-9 rounded-xl border-primary/30 backdrop-blur-md bg-primary/10 text-primary hover:bg-primary/20">
+                      <Users size={14} /> Add Friend
+                    </Button>
+                  )}
                 </div>
 
-                {/* Row 2: Message button below */}
+                <div className="flex-1">
+                  <Button 
+                    onClick={handleFollow} 
+                    variant={isFollowing ? "outline" : "default"} 
+                    className={`w-full text-xs h-9 rounded-xl font-bold ${isFollowing ? 'backdrop-blur-md bg-background/30 hover:bg-background/50 border border-border/30 text-foreground shadow-md' : 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-md'}`}
+                  >
+                    {isFollowing ? 'Unfollow' : 'Follow'}
+                  </Button>
+                </div>
+
                 {isMutualFollow && (
-                  <div className="w-full">
-                    <Button onClick={() => navigate(`/messages/${targetUserId}`)} variant="secondary" className="w-full gap-2 text-xs h-9">
-                      <MessageSquare size={14} /> Message
-                    </Button>
-                  </div>
+                  <Button onClick={() => navigate(`/messages/${targetUserId}`)} variant="secondary" className="gap-2 text-xs h-9 rounded-xl px-3.5 backdrop-blur-md bg-background/30 hover:bg-background/50 border border-border/30 text-foreground shadow-md">
+                    <MessageSquare size={14} />
+                  </Button>
                 )}
               </div>
             )}
           </div>
 
-          <div className="mb-5 flex flex-col items-center text-center">
-            {profile.firstName || profile.lastName ? (
-              <>
-                <h1 className="text-2xl font-bold text-foreground">
-                  {`${profile.firstName || ''} ${profile.lastName || ''}`.trim()}
-                </h1>
-                <p className="text-sm text-muted-foreground font-semibold">@{profile.username}</p>
-              </>
-            ) : (
-              <h1 className="text-2xl font-bold text-foreground">{profile.username}</h1>
-            )}
-            
-            {profile.bio && (
-              <p className="text-sm text-foreground/90 mt-2.5 max-w-sm">{profile.bio}</p>
-            )}
-            
-            <div className="flex flex-wrap justify-center gap-4 mt-3 text-xs text-muted-foreground font-medium">
-              {profile.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin size={14} /> {profile.location}
-                </div>
-              )}
-              {profile.website && (
-                <a href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 text-primary hover:underline">
-                  <LinkIcon size={14} /> {profile.website.replace(/^https?:\/\//, '')}
-                </a>
-              )}
-            </div>
-
-            {profile.status && profile.status.expiresAt && new Date() < new Date(profile.status.expiresAt) && (profile.status.emoji || profile.status.text) && (
-              <div className="mt-4 inline-flex items-center gap-2 bg-muted/60 border border-border/50 rounded-full px-4 py-1.5">
-                {profile.status.emoji && <span className="text-base">{profile.status.emoji}</span>}
-                {profile.status.text && <span className="text-sm text-muted-foreground">{profile.status.text}</span>}
-                {profile.status.isFree && <span className="text-[10px] font-semibold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">Free</span>}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-center gap-8 border-t border-border/50 pt-5 mt-5">
+          {/* Stats Bar */}
+          <div className="flex justify-between sm:justify-center gap-4 sm:gap-8 w-full border-t border-border/20 pt-4 mt-4 text-center px-1">
             <div className="flex flex-col items-center">
-              <span className="text-lg font-bold text-foreground">{posts.length}</span>
+              <span className="text-base font-bold text-foreground">{posts.length}</span>
               <span className="text-xs text-muted-foreground font-medium">Posts</span>
             </div>
-            <button onClick={() => openUserList('followers')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
-              <span className="text-lg font-bold text-foreground">{profile.followers?.length || 0}</span>
+            <button onClick={() => openUserList('followers')} className="flex flex-col items-center hover:opacity-75 transition-opacity">
+              <span className="text-base font-bold text-foreground">{profile.followers?.length || 0}</span>
               <span className="text-xs text-muted-foreground font-medium">Followers</span>
             </button>
-            <button onClick={() => openUserList('following')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
-              <span className="text-lg font-bold text-foreground">{profile.following?.length || 0}</span>
+            <button onClick={() => openUserList('following')} className="flex flex-col items-center hover:opacity-75 transition-opacity">
+              <span className="text-base font-bold text-foreground">{profile.following?.length || 0}</span>
               <span className="text-xs text-muted-foreground font-medium">Following</span>
             </button>
-            <button onClick={() => openUserList('friends')} className="flex flex-col items-center hover:opacity-70 transition-opacity">
-              <span className="text-lg font-bold text-foreground">{profile.friends?.length || 0}</span>
+            <button onClick={() => openUserList('friends')} className="flex flex-col items-center hover:opacity-75 transition-opacity">
+              <span className="text-base font-bold text-foreground">{profile.friends?.length || 0}</span>
               <span className="text-xs text-muted-foreground font-medium">Friends</span>
             </button>
           </div>
         </div>
       </Card>
 
-      {/* View mode tabs */}
-      <div className="w-full flex border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
-        <button
-          onClick={() => setViewMode('timeline')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-b-2 ${
-            viewMode === 'timeline' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <LayoutList size={16} /> Timeline
-        </button>
-        <button
-          onClick={() => setViewMode('grid')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-b-2 ${
-            viewMode === 'grid' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Grid3X3 size={16} /> Photos
-        </button>
-      </div>
+      {/* Main Single-Column Content Section */}
+      <div className="w-full space-y-6">
+        {/* Sticky Tabs Bar */}
+        <div className="w-full flex border border-border/30 sticky top-0 bg-card/30 backdrop-blur-md z-10 rounded-xl overflow-hidden shadow-md">
+          <button
+            onClick={() => setViewMode('timeline')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors border-b-2 ${
+              viewMode === 'timeline' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-background/25'
+            }`}
+          >
+            <LayoutList size={16} /> Timeline
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors border-b-2 ${
+              viewMode === 'grid' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-background/25'
+            }`}
+          >
+            <Grid3X3 size={16} /> Photos Grid
+          </button>
+        </div>
 
-      {/* Content */}
-      {viewMode === 'timeline' ? (
-        posts.length === 0 ? (
-          <div className="text-center text-muted-foreground py-12">
-            <LayoutList size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium">No posts yet</p>
-          </div>
+        {/* Content Views */}
+        {viewMode === 'timeline' ? (
+          posts.length === 0 ? (
+            <Card className="text-center text-muted-foreground py-12 border-border/30 bg-card/25 backdrop-blur-md rounded-2xl shadow-md">
+              <LayoutList size={48} className="mx-auto mb-4 opacity-30 text-primary" />
+              <p className="text-lg font-bold text-foreground">No posts yet</p>
+              <p className="text-sm text-muted-foreground mt-1">When {profile.username} shares something, it will show up here.</p>
+            </Card>
+          ) : (
+            <div className="w-full space-y-4">
+              {posts.map((post) => {
+                const isRepost = post.author?._id !== targetUserId;
+                return (
+                  <div key={post._id}>
+                    {isRepost && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1 ml-4">
+                        <Share size={12} />
+                        <span className="font-semibold">{profile.username}</span> reposted
+                      </div>
+                    )}
+                    <PostCard post={post} />
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : (
-          <div className="w-full space-y-4">
-            {posts.map((post) => {
-              const isRepost = post.author?._id !== targetUserId;
-              return (
-                <div key={post._id}>
-                  {isRepost && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1 ml-4">
-                      <Share size={12} />
-                      <span className="font-medium">{profile.username}</span> reposted
+          imagePosts.length === 0 ? (
+            <Card className="text-center text-muted-foreground py-12 border-border/30 bg-card/25 backdrop-blur-md rounded-2xl shadow-md">
+              <Grid3X3 size={48} className="mx-auto mb-4 opacity-30 text-primary" />
+              <p className="text-lg font-bold text-foreground">No photos yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Photo posts shared by {profile.username} will appear here.</p>
+            </Card>
+          ) : (
+            <Card className="p-4 border-border/30 bg-card/25 backdrop-blur-md shadow-md rounded-2xl">
+              <div className="w-full grid grid-cols-3 gap-2">
+                {imagePosts.map((post) => (
+                  <button 
+                    key={post._id} 
+                    onClick={() => navigate(`/post/${post._id}`)} 
+                    className="relative aspect-square overflow-hidden bg-muted group cursor-pointer rounded-lg border border-border/40"
+                  >
+                    <img src={post.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-4">
+                      <div className="flex items-center gap-1 text-white text-sm font-semibold"><Heart size={16} className="fill-white" />{post.likes?.length || 0}</div>
+                      <div className="flex items-center gap-1 text-white text-sm font-semibold"><MessageCircle size={16} className="fill-white" />{post.comments?.length || 0}</div>
                     </div>
-                  )}
-                  <PostCard post={post} />
-                </div>
-              );
-            })}
-          </div>
-        )
-      ) : (
-        imagePosts.length === 0 ? (
-          <div className="text-center text-muted-foreground py-12">
-            <Grid3X3 size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium">No photo posts yet</p>
-          </div>
-        ) : (
-          <div className="w-full grid grid-cols-3 gap-1">
-            {imagePosts.map((post) => (
-              <button key={post._id} onClick={() => navigate(`/post/${post._id}`)} className="relative aspect-square overflow-hidden bg-muted group cursor-pointer">
-                <img src={post.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-4">
-                  <div className="flex items-center gap-1 text-white text-sm font-semibold"><Heart size={16} className="fill-white" />{post.likes?.length || 0}</div>
-                  <div className="flex items-center gap-1 text-white text-sm font-semibold"><MessageCircle size={16} className="fill-white" />{post.comments?.length || 0}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )
-      )}
+                  </button>
+                ))}
+              </div>
+            </Card>
+          )
+        )}
+      </div>
 
       {/* Followers / Following / Friends List Modal */}
       {listModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl relative max-h-[70vh] flex flex-col">
+          <div className="bg-card/85 backdrop-blur-lg w-full max-w-md rounded-2xl border border-border/30 shadow-2xl relative max-h-[70vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="text-lg font-bold capitalize">{listModal.title}</h2>
               <button onClick={() => setListModal({ open: false, title: '', users: [], loading: false })} className="text-muted-foreground hover:text-foreground">
@@ -520,41 +649,63 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Edit Profile Modal */}
+      {/* Edit Profile Modal (Improved with FirstName / LastName fields) */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl p-6 relative">
+          <div className="bg-card/85 backdrop-blur-lg w-full max-w-md rounded-2xl border border-border/30 shadow-2xl p-6 relative">
             <button onClick={() => setIsEditModalOpen(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
               <X size={20} />
             </button>
-            <h2 className="text-xl font-bold mb-6 text-foreground">Edit Profile</h2>
-            <div className="space-y-4">
+            <h2 className="text-xl font-bold mb-5 text-foreground">Edit Profile</h2>
+            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">First Name</label>
+                  <input 
+                    type="text" 
+                    value={editForm.firstName} 
+                    onChange={e => setEditForm({...editForm, firstName: e.target.value})}
+                    className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    placeholder="First Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Last Name</label>
+                  <input 
+                    type="text" 
+                    value={editForm.lastName} 
+                    onChange={e => setEditForm({...editForm, lastName: e.target.value})}
+                    className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    placeholder="Last Name"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Bio</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Bio</label>
                 <textarea 
                   value={editForm.bio} 
                   onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                  className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none h-24"
+                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none h-20"
                   placeholder="Tell us about yourself..."
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Location</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Location</label>
                 <input 
                   type="text" 
                   value={editForm.location} 
                   onChange={e => setEditForm({...editForm, location: e.target.value})}
-                  className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   placeholder="e.g. San Francisco, CA"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Website</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Website</label>
                 <input 
                   type="text" 
                   value={editForm.website} 
                   onChange={e => setEditForm({...editForm, website: e.target.value})}
-                  className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full bg-background/40 backdrop-blur-sm border border-border/30 rounded-xl p-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   placeholder="e.g. yoursite.com"
                 />
               </div>
@@ -566,6 +717,54 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      {/* Avatar Selection Modal (Mobile/PWA Touch Friendly) */}
+      {isAvatarModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card/85 backdrop-blur-lg w-full max-w-sm rounded-2xl border border-border/30 shadow-2xl p-6 relative">
+            <button onClick={() => setIsAvatarModalOpen(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
+              <X size={20} />
+            </button>
+            <h2 className="text-lg font-bold mb-4 text-foreground text-center">Profile Picture</h2>
+            <div className="flex flex-col gap-2.5">
+              <Button 
+                onClick={() => { setIsAvatarModalOpen(false); fileInputRef.current?.click(); }}
+                className="w-full gap-2 text-sm font-semibold rounded-xl"
+              >
+                {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
+                Upload New Photo
+              </Button>
+              {profile.profilePicture && (
+                <Button 
+                  onClick={() => { setIsAvatarModalOpen(false); handleRemoveAvatar(); }}
+                  variant="destructive"
+                  className="w-full gap-2 text-sm font-semibold rounded-xl bg-red-600/80 hover:bg-red-600 text-white"
+                >
+                  <Trash2 size={16} /> Remove Current Photo
+                </Button>
+              )}
+              <Button 
+                onClick={() => setIsAvatarModalOpen(false)} 
+                variant="outline" 
+                className="w-full mt-1 border-border/40 text-sm font-semibold rounded-xl"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reusable Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, open: false }))}
+        confirmText="Confirm"
+        isDestructive={confirmModal.isDestructive}
+      />
     </div>
   );
 };

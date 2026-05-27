@@ -58,9 +58,17 @@ export const getMessages = async (req, res) => {
       }
     );
 
+    const limit = parseInt(req.query.limit) || 100;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+
     const messages = await Message.find({ conversationId: conversation._id })
       .populate('sender', 'username profilePicture firstName lastName')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    messages.reverse();
 
     res.json({ conversationId: conversation._id, messages });
   } catch (error) {

@@ -8,6 +8,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import connectDB from './config/db.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
 import { initSocket, onlineUsers } from './socket.js';
@@ -22,23 +23,54 @@ const httpServer = http.createServer(app);
 const io = initSocket(httpServer);
 
 // Security Middleware
-app.use(helmet());
+app.use(helmet({
+  frameguard: { action: 'deny' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+      styleSrc: ["'unsafe-inline'"],
+    }
+  }
+}));
 
-// Rate Limiting (Enabled only in Production)
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1); // Trust reverse proxy headers (Render, Vercel, Cloudflare)
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, 
-    message: 'Too many requests from this IP, please try again later'
-  });
-  app.use('/api', limiter);
+// Rate Limiting
+const isProd = process.env.NODE_ENV === 'production';
+if (isProd) {
+  app.set('trust proxy', 1); // Trust reverse proxy headers
 }
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProd ? 1000 : 5000,
+  message: 'Too many requests from this IP, please try again later'
+});
+app.use('/api', generalLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProd ? 100 : 500, // Stricter limit on auth routes
+  message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// Strict OTP rate limiter — prevents bot spam on email-sending endpoints
+const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: isProd ? 3 : 20,     // 3 in production, relaxed for dev
+  message: 'Too many verification requests from this IP. Please try again after 10 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/register', otpLimiter);
+app.use('/api/auth/resend-code', otpLimiter);
+
 // Middleware
+app.use(compression());
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 // Make io accessible in routes
 app.set('io', io);
@@ -65,9 +97,14 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/rooms', roomRoutes);
 
+// Health Check Endpoint (to prevent Render Free Tier spin-down)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is active' });
+});
+
 // Make uploads folder static
 const __dirname = path.resolve();
-app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '/uploads'), { maxAge: '1d' }));
 
 // Error Handler
 app.use(errorHandler);
