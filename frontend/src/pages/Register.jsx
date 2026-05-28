@@ -152,8 +152,8 @@ const Register = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Sign Up'}
+          <Button type="submit" className="w-full" isLoading={isLoading}>
+            Sign Up
           </Button>
 
           <div className="text-center mt-4">

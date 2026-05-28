@@ -12,6 +12,10 @@ import { Separator } from '../components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import ConfirmDialog from './ConfirmDialog';
 import { getImageUrl } from '../lib/utils';
+import useAsyncAction from '../hooks/useAsyncAction';
+import toast from 'react-hot-toast';
+
+
 
 
 const PostCard = ({ post: initialPost }) => {
@@ -22,6 +26,10 @@ const PostCard = ({ post: initialPost }) => {
   const [post, setPost] = useState(initialPost);
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState('');
+  
+  const lastLikeClickRef = React.useRef(0);
+  const lastShareClickRef = React.useRef(0);
+
 
   useEffect(() => {
     setPost(initialPost);
@@ -55,15 +63,39 @@ const PostCard = ({ post: initialPost }) => {
   const isAuthor = user && post.author?._id === user._id;
 
   const handleLike = async () => {
+    if (!user) return;
+
+    const now = Date.now();
+    if (now - lastLikeClickRef.current < 400) {
+      return; // Ignore rapid spam clicks
+    }
+    lastLikeClickRef.current = now;
+
+    const originalLikes = [...(post.likes || [])];
+    const isAlreadyLiked = originalLikes.includes(user._id);
+
+    // Optimistic Update
+    const newLikes = isAlreadyLiked
+      ? originalLikes.filter(id => id !== user._id)
+      : [...originalLikes, user._id];
+
+    setPost(prev => ({ ...prev, likes: newLikes }));
+
     try {
       const res = await dispatch(toggleLike(post._id)).unwrap();
+      // Update with server confirmation
       setPost(prev => ({ ...prev, likes: res.likes }));
     } catch (err) {
       console.error('Failed to toggle like', err);
+      // Rollback
+      setPost(prev => ({ ...prev, likes: originalLikes }));
+      toast.error('Failed to update like status');
     }
   };
 
-  const handleCommentSubmit = async (e) => {
+
+
+  const [handleCommentSubmit, isSubmittingComment] = useAsyncAction(async (e) => {
     e.preventDefault();
     if (commentText.trim() !== '') {
       try {
@@ -78,7 +110,7 @@ const PostCard = ({ post: initialPost }) => {
         console.error('Failed to add comment', err);
       }
     }
-  };
+  });
 
   const handleDeletePost = () => {
     setShowDeleteConfirm(true);
@@ -102,7 +134,7 @@ const PostCard = ({ post: initialPost }) => {
     setEditRemoveImage(false);
   };
 
-  const handleSaveEdit = async () => {
+  const [handleSaveEdit, isSavingEdit] = useAsyncAction(async () => {
     const contentChanged = editText.trim() !== post.content;
     const imageChanged = editRemoveImage && post.image;
     const visibilityChanged = editVisibility !== (post.visibility || 'friends');
@@ -123,9 +155,9 @@ const PostCard = ({ post: initialPost }) => {
     setIsEditing(false);
     setEditText('');
     setEditRemoveImage(false);
-  };
+  });
 
-  const handleReplySubmit = async (e, commentId) => {
+  const [handleReplySubmit, isSubmittingReply] = useAsyncAction(async (e, commentId) => {
     e.preventDefault();
     if (replyText.trim() !== '') {
       try {
@@ -140,16 +172,40 @@ const PostCard = ({ post: initialPost }) => {
         console.error('Failed to reply', err);
       }
     }
-  };
+  });
 
   const handleShare = async () => {
+    if (!user) return;
+
+    const now = Date.now();
+    if (now - lastShareClickRef.current < 400) {
+      return; // Ignore rapid spam clicks
+    }
+    lastShareClickRef.current = now;
+
+    const originalShares = [...(post.shares || [])];
+    const hasAlreadyShared = originalShares.includes(user._id);
+
+    // Optimistic Update
+    const newShares = hasAlreadyShared
+      ? originalShares.filter(id => id !== user._id)
+      : [...originalShares, user._id];
+
+    setPost(prev => ({ ...prev, shares: newShares }));
+
     try {
       const res = await dispatch(sharePost(post._id)).unwrap();
       setPost(prev => ({ ...prev, shares: res.shares }));
     } catch (err) {
       console.error('Failed to share post', err);
+      // Rollback
+      setPost(prev => ({ ...prev, shares: originalShares }));
+      toast.error('Failed to share post');
     }
   };
+
+
+
 
   return (
     <Card className="w-full mb-6 overflow-hidden border-blue-500/30 shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)] bg-card/30 backdrop-blur-md">
@@ -262,6 +318,7 @@ const PostCard = ({ post: initialPost }) => {
                 <Button
                   size="sm"
                   onClick={handleSaveEdit}
+                  isLoading={isSavingEdit}
                   disabled={!editText.trim() || (editText.trim() === post.content && !editRemoveImage && editVisibility === (post.visibility || 'friends'))}
                   className="gap-1.5"
                 >
@@ -445,7 +502,7 @@ const PostCard = ({ post: initialPost }) => {
                         className="flex-1 bg-background/40 backdrop-blur-sm h-8 text-xs border-blue-500/20 focus:border-blue-500/50"
                         autoFocus
                       />
-                      <Button type="submit" size="icon" disabled={!replyText.trim()} className="h-8 w-8 shrink-0">
+                      <Button type="submit" size="icon" isLoading={isSubmittingReply} disabled={!replyText.trim()} className="h-8 w-8 shrink-0">
                         <Reply size={14} />
                       </Button>
                     </form>
@@ -468,7 +525,7 @@ const PostCard = ({ post: initialPost }) => {
                 onChange={(e) => setCommentText(e.target.value)}
                 className="flex-1 bg-background/40 backdrop-blur-sm h-9 text-sm border-blue-500/20 focus:border-blue-500/50"
               />
-              <Button type="submit" size="icon" disabled={!commentText.trim()} className="h-9 w-9 shrink-0">
+              <Button type="submit" size="icon" isLoading={isSubmittingComment} disabled={!commentText.trim()} className="h-9 w-9 shrink-0">
                 <Send size={16} />
               </Button>
             </form>

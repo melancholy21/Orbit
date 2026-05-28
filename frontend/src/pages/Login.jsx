@@ -115,8 +115,8 @@ const Login = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Log In'}
+          <Button type="submit" className="w-full" isLoading={isLoading}>
+            Log In
           </Button>
 
           <div className="text-center mt-4">

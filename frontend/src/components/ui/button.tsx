@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -37,20 +38,58 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  isLoading?: boolean
+  throttleMs?: number
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, isLoading = false, throttleMs = 800, onClick, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const lastClickedRef = React.useRef<number>(0)
+
+    const handleThrottledClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (isLoading) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (throttleMs > 0) {
+        const now = Date.now();
+        if (now - lastClickedRef.current < throttleMs) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        lastClickedRef.current = now;
+      }
+
+      if (onClick) {
+        onClick(e);
+      }
+    }
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        disabled={isLoading || props.disabled}
+        onClick={handleThrottledClick}
         {...props}
-      />
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+            {children}
+          </>
+        ) : (
+          children
+        )}
+      </Comp>
     )
   }
 )
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+

@@ -438,10 +438,11 @@ const Chat = () => {
           <Button 
             type="submit" 
             size="icon" 
-            disabled={!inputText.trim() && !imageFile || sending} 
+            isLoading={sending}
+            disabled={!inputText.trim() && !imageFile} 
             className="rounded-full h-10 w-10 shrink-0"
           >
-            {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+            <Send size={18} />
           </Button>
         </form>
       </div>

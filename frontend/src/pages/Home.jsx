@@ -212,10 +212,11 @@ const Home = () => {
             
             <Button 
               onClick={handlePostSubmit}
-              disabled={(!content.trim() && !imageFile) || isLoading || isUploading}
+              isLoading={isLoading || isUploading}
+              disabled={(!content.trim() && !imageFile)}
               className="gap-2"
             >
-              {(isLoading || isUploading) ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+              <Send size={16} />
               Share
             </Button>
           </div>
