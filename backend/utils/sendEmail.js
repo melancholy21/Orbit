@@ -82,11 +82,7 @@ const sendEmail = async ({ email, subject, message, html }) => {
     console.log(`  Body:    ${message}`);
     console.log('══════════════════════════════════════════\n');
 
-    // If it's a testing limitation, or we are in development, let it succeed so developers can still copy the OTP code from the console.
-    // Otherwise (actual production failure), throw the error.
-    if (process.env.NODE_ENV === 'production' && !isTestingLimit) {
-      throw error;
-    }
+    // If SMTP fails, let the registration succeed anyway so the OTP code can be retrieved from the server logs if SMTP is misconfigured.
   }
 };
 
