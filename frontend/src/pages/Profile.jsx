@@ -629,7 +629,6 @@ const Profile = () => {
                         <span className="font-semibold text-sm">
                           {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
                         </span>
-                        <span className="text-xs text-muted-foreground">@{u.username}</span>
                         {u.bio && <span className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{u.bio}</span>}
                       </div>
                     </button>

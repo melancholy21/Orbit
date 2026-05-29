@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Repeat2, Globe, Users } from 'lucide-react';
+import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Repeat2, Globe, Users, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -291,6 +291,7 @@ const PostCard = ({ post: initialPost }) => {
                   <Button variant="ghost" size="sm" className="text-muted-foreground text-xs gap-1.5 h-8 border border-border/40 rounded-lg px-2.5 cursor-pointer">
                     {editVisibility === 'public' ? <Globe size={14} /> : <Users size={14} />}
                     <span className="capitalize">{editVisibility}</span>
+                    <ChevronDown size={12} className="opacity-60 ml-0.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
@@ -496,7 +497,7 @@ const PostCard = ({ post: initialPost }) => {
                         </AvatarFallback>
                       </Avatar>
                       <Input
-                        placeholder={`Reply to ${comment.author?.username}...`}
+                        placeholder={`Reply to ${comment.author?.firstName || comment.author?.lastName ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() : comment.author?.username}...`}
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         className="flex-1 bg-background/40 backdrop-blur-sm h-8 text-xs border-blue-500/20 focus:border-blue-500/50"

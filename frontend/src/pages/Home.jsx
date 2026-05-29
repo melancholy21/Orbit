@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Image as ImageIcon, Send, Loader2, X, Radio, Globe, Users } from 'lucide-react';
+import { Image as ImageIcon, Send, Loader2, X, Radio, Globe, Users, ChevronDown } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getPosts, createPost, reset } from '../features/posts/postSlice';
 import PostCard from '../components/PostCard';
@@ -197,6 +197,7 @@ const Home = () => {
                   <Button variant="ghost" size="sm" className="text-muted-foreground text-xs gap-1.5 h-8 border border-border/40 rounded-lg px-2.5 cursor-pointer">
                     {visibility === 'public' ? <Globe size={14} /> : <Users size={14} />}
                     <span className="capitalize">{visibility}</span>
+                    <ChevronDown size={12} className="opacity-60 ml-0.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">

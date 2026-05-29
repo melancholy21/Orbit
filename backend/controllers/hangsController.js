@@ -442,7 +442,9 @@ export const clockOut = async (req, res, next) => {
 
     const now = new Date();
     openEntry.timeOut = now;
-    openEntry.hoursRendered = Math.round(((now - new Date(openEntry.timeIn)) / (1000 * 60 * 60)) * 100) / 100;
+    const rawHours = (now - new Date(openEntry.timeIn)) / (1000 * 60 * 60);
+    const calculatedHours = rawHours > 5 ? rawHours - 1 : rawHours;
+    openEntry.hoursRendered = Math.round(calculatedHours * 100) / 100;
 
     await dtr.save();
     res.status(200).json(dtr);
@@ -473,7 +475,9 @@ export const addManualEntry = async (req, res, next) => {
       throw new Error('Time Out must be after Time In');
     }
 
-    const hoursRendered = Math.round(((outDate - inDate) / (1000 * 60 * 60)) * 100) / 100;
+    const rawHours = (outDate - inDate) / (1000 * 60 * 60);
+    const calculatedHours = rawHours > 5 ? rawHours - 1 : rawHours;
+    const hoursRendered = Math.round(calculatedHours * 100) / 100;
 
     dtr.entries.push({
       date: new Date(date),

@@ -129,10 +129,8 @@ const Notifications = () => {
                     {notif.sender?.firstName || notif.sender?.lastName
                       ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim()
                       : notif.sender?.username || 'Deleted User'}
-                  </span>
-                  {(notif.sender?.firstName || notif.sender?.lastName) && (
-                    <span className="text-xs text-muted-foreground ml-1">@{notif.sender?.username}</span>
-                  )} {notif.content}
+                  </span>{' '}
+                  {notif.content}
                 </p>
                 <span className="text-xs text-muted-foreground mt-1 block">
                   {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
