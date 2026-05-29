@@ -3,10 +3,6 @@ const router = express.Router();
 import { createPost, getPosts, toggleLike, addComment, deletePost, editPost, replyToComment, getUserPosts, sharePost, getPostById } from '../controllers/postController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
-router.get('/test-posts', (req, res) => {
-  res.json({ message: 'post route is active' });
-});
-
 router.route('/')
   .get(protect, getPosts)
   .post(protect, createPost);
