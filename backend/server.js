@@ -14,6 +14,8 @@ import compression from 'compression';
 import connectDB from './config/db.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
 import { initSocket, onlineUsers } from './socket.js';
+import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 
 // Connect to database
 connectDB();
@@ -42,6 +44,9 @@ app.use(cors({
   },
   credentials: true
 }));
+
+app.use(cookieParser());
+app.use(mongoSanitize());
 
 // Initialize Socket.io
 const io = initSocket(httpServer);

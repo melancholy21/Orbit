@@ -46,9 +46,10 @@ const roomSchema = new mongoose.Schema({
   repeatMode: {
     type: String,
     enum: ['off', 'track', 'queue'],
-    default: 'off'
   }
 }, { timestamps: true });
+
+roomSchema.index({ owner: 1 });
 
 const Room = mongoose.model('Room', roomSchema);
 export default Room;

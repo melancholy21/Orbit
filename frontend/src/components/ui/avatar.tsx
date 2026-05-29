@@ -25,7 +25,7 @@ const AvatarImage = React.forwardRef<
   <AvatarPrimitive.Image
     ref={ref}
     className={cn("aspect-square h-full w-full", className)}
-    src={getImageUrl(src)}
+    src={getImageUrl(src, { width: 96, height: 96, crop: 'fill' })}
     {...props}
   />
 ))

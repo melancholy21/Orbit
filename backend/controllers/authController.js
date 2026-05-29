@@ -132,6 +132,14 @@ export const verifyEmail = async (req, res, next) => {
     // Delete the pending record immediately
     await PendingUser.deleteOne({ email });
 
+    const token = generateToken(savedUser._id);
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.status(200).json({
       _id: savedUser.id,
       username: savedUser.username,
@@ -145,7 +153,7 @@ export const verifyEmail = async (req, res, next) => {
       lastName: savedUser.lastName,
       isOnboarded: savedUser.isOnboarded,
       spotifyAccessToken: savedUser.spotifyAccessToken,
-      token: generateToken(savedUser._id),
+      token,
     });
   } catch (error) {
     next(error);
@@ -237,6 +245,14 @@ export const loginUser = async (req, res, next) => {
         await user.save();
       }
 
+      const token = generateToken(user._id);
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
       res.json({
         _id: user.id,
         username: user.username,
@@ -250,7 +266,7 @@ export const loginUser = async (req, res, next) => {
         lastName: user.lastName,
         isOnboarded: user.isOnboarded,
         spotifyAccessToken: user.spotifyAccessToken,
-        token: generateToken(user._id),
+        token,
       });
     } else {
       // Increment failed attempts
@@ -278,6 +294,21 @@ export const loginUser = async (req, res, next) => {
 export const getMe = async (req, res, next) => {
   try {
     res.status(200).json(req.user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Logout User (Clear Cookie) ───────────────────────────────────────────────
+export const logoutUser = async (req, res, next) => {
+  try {
+    res.cookie('token', '', {
+      httpOnly: true,
+      expires: new Date(0),
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     next(error);
   }

@@ -38,7 +38,10 @@ const login = async (userData) => {
 };
 
 // Logout user
-const logout = () => {
+const logout = async () => {
+  try {
+    await axios.post(API_URL + 'logout');
+  } catch (err) {}
   localStorage.removeItem('user');
 };
 
