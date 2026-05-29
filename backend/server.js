@@ -27,11 +27,15 @@ app.use(cors({
       'https://orbit-rouge-three.vercel.app',
       'https://siding-hug-slab.ngrok-free.dev',
       'http://localhost:5173'
-    ].filter(Boolean);
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    ].filter(Boolean).map(o => o.trim().replace(/\/$/, ''));
+
+    const cleanOrigin = origin ? origin.trim().replace(/\/$/, '') : '';
+
+    if (!origin || allowedOrigins.includes(cleanOrigin) || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`[CORS Blocked] Origin: ${origin}`);
+      callback(null, false);
     }
   },
   credentials: true
