@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const dnsLookup = promisify(dns.lookup);
 
 /**
  * Sends an email using Nodemailer.
@@ -26,8 +30,19 @@ const sendEmail = async ({ email, subject, message, html }) => {
     return;
   }
 
+  // Dynamically resolve the host to IPv4 to prevent ENETUNREACH error on IPv6
+  let targetHost = smtpHost;
+  try {
+    const resolved = await dnsLookup(smtpHost, { family: 4 });
+    if (resolved && resolved.address) {
+      targetHost = resolved.address;
+    }
+  } catch (err) {
+    console.warn(`[SMTP DNS] Failed resolving IPv4 for ${smtpHost}, falling back:`, err.message);
+  }
+
   const transporter = nodemailer.createTransport({
-    host: smtpHost,
+    host: targetHost,
     port: parseInt(smtpPort, 10) || 587,
     secure: parseInt(smtpPort, 10) === 465, // true for port 465
     auth: {
@@ -36,8 +51,8 @@ const sendEmail = async ({ email, subject, message, html }) => {
     },
     tls: {
       rejectUnauthorized: false,
+      servername: smtpHost, // Validate SSL certificate using original hostname
     },
-    family: 4, // Force IPv4 resolution to prevent ENETUNREACH on IPv6-only Gmail SMTP addresses
     connectionTimeout: 10000, // 10 seconds
     greetingTimeout: 10000,   // 10 seconds
     socketTimeout: 15000,     // 15 seconds
