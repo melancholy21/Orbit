@@ -13,7 +13,7 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import connectDB from './config/db.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
-import { initSocket, onlineUsers } from './socket.js';
+import { initSocket } from './socket.js';
 import cookieParser from 'cookie-parser';
 import { mongoSanitize } from './middleware/mongoSanitize.js';
 
