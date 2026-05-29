@@ -16,8 +16,14 @@ axios.interceptors.response.use(
       const requestUrl = error.config?.url || '';
       // Only force logout/redirect if the 401 error is not from the Spotify API
       if (!requestUrl.includes('api.spotify.com')) {
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        const requestToken = error.config?.headers?.Authorization?.split(' ')[1];
+
+        // Only clear session and redirect if the failed request was using the current session's token
+        if (!requestToken || (currentUser && currentUser.token === requestToken)) {
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

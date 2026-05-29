@@ -12,7 +12,8 @@ const initialState = {
 // Get posts
 export const getPosts = createAsyncThunk('posts/getAll', async (_, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.getPosts(token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -23,7 +24,8 @@ export const getPosts = createAsyncThunk('posts/getAll', async (_, thunkAPI) => 
 // Create post
 export const createPost = createAsyncThunk('posts/create', async (postData, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.createPost(postData, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -34,7 +36,8 @@ export const createPost = createAsyncThunk('posts/create', async (postData, thun
 // Toggle like
 export const toggleLike = createAsyncThunk('posts/like', async (postId, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.toggleLike(postId, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -45,7 +48,8 @@ export const toggleLike = createAsyncThunk('posts/like', async (postId, thunkAPI
 // Share post
 export const sharePost = createAsyncThunk('posts/share', async (postId, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.sharePost(postId, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -56,7 +60,8 @@ export const sharePost = createAsyncThunk('posts/share', async (postId, thunkAPI
 // Add comment
 export const addComment = createAsyncThunk('posts/comment', async (commentData, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.addComment(commentData.postId, { content: commentData.content }, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -66,7 +71,8 @@ export const addComment = createAsyncThunk('posts/comment', async (commentData, 
 
 export const deletePost = createAsyncThunk('posts/delete', async (postId, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.deletePost(postId, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
@@ -76,7 +82,8 @@ export const deletePost = createAsyncThunk('posts/delete', async (postId, thunkA
 
 export const editPost = createAsyncThunk('posts/edit', async ({ postId, content, image, visibility }, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     const data = { content };
     if (image !== undefined) data.image = image;
     if (visibility !== undefined) data.visibility = visibility;
@@ -89,7 +96,8 @@ export const editPost = createAsyncThunk('posts/edit', async ({ postId, content,
 
 export const addReply = createAsyncThunk('posts/addReply', async (replyData, thunkAPI) => {
   try {
-    const token = thunkAPI.getState().auth.user.token;
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
     return await postService.addReply(replyData.commentId, { content: replyData.content }, token);
   } catch (error) {
     const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();

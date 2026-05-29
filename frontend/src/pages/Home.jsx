@@ -34,7 +34,9 @@ const Home = () => {
       dispatch(reset());
     }
 
-    dispatch(getPosts());
+    if (user?.token) {
+      dispatch(getPosts());
+    }
 
     // Check lobby presence
     const checkLobby = async () => {

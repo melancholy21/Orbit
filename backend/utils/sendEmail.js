@@ -37,6 +37,7 @@ const sendEmail = async ({ email, subject, message, html }) => {
     tls: {
       rejectUnauthorized: false,
     },
+    family: 4, // Force IPv4 resolution to prevent ENETUNREACH on IPv6-only Gmail SMTP addresses
     connectionTimeout: 10000, // 10 seconds
     greetingTimeout: 10000,   // 10 seconds
     socketTimeout: 15000,     // 15 seconds
