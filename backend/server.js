@@ -19,6 +19,24 @@ connectDB();
 const app = express();
 const httpServer = http.createServer(app);
 
+// CORS must be at the very top of the middleware stack
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'https://orbit-rouge-three.vercel.app',
+      'https://siding-hug-slab.ngrok-free.dev',
+      'http://localhost:5173'
+    ].filter(Boolean);
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 // Initialize Socket.io
 const io = initSocket(httpServer);
 
@@ -68,7 +86,6 @@ app.use('/api/auth/resend-code', otpLimiter);
 
 // Middleware
 app.use(compression());
-app.use(cors());
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 

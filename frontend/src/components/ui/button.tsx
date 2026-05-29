@@ -69,6 +69,28 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       }
     }
 
+    let finalChildren = children
+    if (isLoading) {
+      if (asChild && React.isValidElement(children)) {
+        const childProps = children.props as { children?: React.ReactNode }
+        finalChildren = React.cloneElement(
+          children,
+          {},
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+            {childProps.children}
+          </>
+        )
+      } else {
+        finalChildren = (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+            {children}
+          </>
+        )
+      }
+    }
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -77,14 +99,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={handleThrottledClick}
         {...props}
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
-            {children}
-          </>
-        ) : (
-          children
-        )}
+        {finalChildren}
       </Comp>
     )
   }
