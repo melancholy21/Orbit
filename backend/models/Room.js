@@ -50,6 +50,7 @@ const roomSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 roomSchema.index({ owner: 1 });
+roomSchema.index({ isPrivate: 1 });
 
 const Room = mongoose.model('Room', roomSchema);
 export default Room;

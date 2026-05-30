@@ -2,8 +2,8 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { onlineUsers } from '../socket.js';
 
-// Helper to clean up non-existent user IDs from relationship arrays
-const cleanUserRelationships = async (user) => {
+// Helper to clean up non-existent user IDs from relationship arrays asynchronously in the background
+const cleanUserRelationships = (user) => {
   const allIds = [
     ...(user.followers || []),
     ...(user.following || []),
@@ -14,28 +14,46 @@ const cleanUserRelationships = async (user) => {
 
   if (allIds.length === 0) return user;
 
-  const existingUsers = await User.find({ _id: { $in: allIds } }).select('_id');
-  const existingIdsSet = new Set(existingUsers.map(u => u._id.toString()));
+  // Execute database checks and updates in the background
+  Promise.resolve().then(async () => {
+    try {
+      const existingUsers = await User.find({ _id: { $in: allIds } }).select('_id');
+      const existingIdsSet = new Set(existingUsers.map(u => u._id.toString()));
 
-  let hasChanges = false;
-  const cleanList = (list) => {
-    if (!list) return [];
-    const filtered = list.filter(id => existingIdsSet.has(id.toString()));
-    if (filtered.length !== list.length) {
-      hasChanges = true;
+      let hasChanges = false;
+      const cleanList = (list) => {
+        if (!list) return [];
+        const filtered = list.filter(id => existingIdsSet.has(id.toString()));
+        if (filtered.length !== list.length) {
+          hasChanges = true;
+        }
+        return filtered;
+      };
+
+      // Dry run on current parameter object to detect changes
+      cleanList(user.followers);
+      cleanList(user.following);
+      cleanList(user.friends);
+      cleanList(user.friendRequestsSent);
+      cleanList(user.friendRequestsReceived);
+
+      if (hasChanges) {
+        // Fetch fresh copy to avoid VersionError due to concurrent updates
+        const freshUser = await User.findById(user._id);
+        if (freshUser) {
+          freshUser.followers = cleanList(freshUser.followers);
+          freshUser.following = cleanList(freshUser.following);
+          freshUser.friends = cleanList(freshUser.friends);
+          freshUser.friendRequestsSent = cleanList(freshUser.friendRequestsSent);
+          freshUser.friendRequestsReceived = cleanList(freshUser.friendRequestsReceived);
+          await freshUser.save();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to clean user relationships in background:', error);
     }
-    return filtered;
-  };
+  });
 
-  user.followers = cleanList(user.followers);
-  user.following = cleanList(user.following);
-  user.friends = cleanList(user.friends);
-  user.friendRequestsSent = cleanList(user.friendRequestsSent);
-  user.friendRequestsReceived = cleanList(user.friendRequestsReceived);
-
-  if (hasChanges) {
-    await user.save();
-  }
   return user;
 };
 
