@@ -21,6 +21,7 @@ const lobbyMessageSchema = new mongoose.Schema({
 // Auto-delete messages older than 24 hours
 lobbyMessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 lobbyMessageSchema.index({ roomId: 1 });
+lobbyMessageSchema.index({ roomId: 1, createdAt: -1 });
 
 const LobbyMessage = mongoose.model('LobbyMessage', lobbyMessageSchema);
 export default LobbyMessage;
