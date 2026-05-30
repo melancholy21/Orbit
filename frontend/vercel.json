@@ -28,10 +28,6 @@
   ],
   "rewrites": [
     {
-      "source": "/\\..*",
-      "destination": "/404"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
