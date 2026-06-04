@@ -1,7 +1,42 @@
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 import { onlineUsers } from '../socket.js';
+
+const handleMentions = async (req, content, postId, commentId = null) => {
+  try {
+    const mentions = content.match(/@([a-zA-Z0-9._-]+)/g) || [];
+    const usernames = [...new Set(mentions.map(m => m.slice(1)))];
+    
+    if (usernames.length === 0) return;
+
+    // Find users
+    const users = await User.find({ username: { $in: usernames } });
+    const io = req.app.get('io');
+
+    for (const targetUser of users) {
+      // Don't notify yourself
+      if (targetUser._id.toString() === req.user.id.toString()) continue;
+
+      const notif = await Notification.create({
+        recipient: targetUser._id,
+        sender: req.user.id,
+        type: 'mention',
+        content: commentId ? 'mentioned you in a comment' : 'mentioned you in a post',
+        post: postId
+      });
+
+      const receiverSocketId = onlineUsers.get(targetUser._id.toString());
+      if (receiverSocketId && io) {
+        const populatedNotif = await notif.populate('sender', 'username profilePicture firstName lastName');
+        io.to(receiverSocketId).emit('newNotification', populatedNotif);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to process mentions:', err);
+  }
+};
 
 export const createPost = async (req, res, next) => {
   try {
@@ -18,6 +53,9 @@ export const createPost = async (req, res, next) => {
       image,
       visibility: visibility || 'friends'
     });
+
+    // Process mentions asynchronously
+    handleMentions(req, content, post._id);
 
     const populatedPost = await Post.findById(post._id).populate('author', 'username profilePicture firstName lastName');
     res.status(201).json(populatedPost);
@@ -136,6 +174,9 @@ export const addComment = async (req, res, next) => {
 
     post.comments.push(comment._id);
     await post.save();
+
+    // Process mentions asynchronously
+    handleMentions(req, content, post._id, comment._id);
 
     // Create notification if commenting on someone else's post
     if (post.author.toString() !== req.user.id) {
@@ -259,6 +300,9 @@ export const replyToComment = async (req, res, next) => {
 
     comment.replies.push(reply);
     await comment.save();
+
+    // Process mentions asynchronously
+    handleMentions(req, content, comment.post, comment._id);
 
     const populatedComment = await Comment.findById(comment._id)
       .populate('author', 'username profilePicture firstName lastName')

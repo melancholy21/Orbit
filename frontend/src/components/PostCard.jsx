@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Send, MoreVertical, Trash2, Reply, Pencil, X, Check, Repeat2, Globe, Users, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
@@ -15,6 +15,8 @@ import { getImageUrl } from '../lib/utils';
 import useAsyncAction from '../hooks/useAsyncAction';
 import toast from 'react-hot-toast';
 import { formatText } from '../lib/textParser';
+import useMentionAutocomplete from '../hooks/useMentionAutocomplete';
+import MentionDropdown from './MentionDropdown';
 
 
 
@@ -30,6 +32,39 @@ const PostCard = ({ post: initialPost }) => {
   
   const lastLikeClickRef = React.useRef(0);
   const lastShareClickRef = React.useRef(0);
+
+  const [friends, setFriends] = useState([]);
+  const commentInputRef = useRef(null);
+  const replyInputRef = useRef(null);
+
+  const commentMention = useMentionAutocomplete(
+    commentText,
+    setCommentText,
+    commentInputRef,
+    friends
+  );
+
+  const replyMention = useMentionAutocomplete(
+    replyText,
+    setReplyText,
+    replyInputRef,
+    friends
+  );
+
+  useEffect(() => {
+    if (expanded && user?.token && friends.length === 0) {
+      const fetchFriends = async () => {
+        try {
+          const config = { headers: { Authorization: `Bearer ${user.token}` } };
+          const { data } = await axios.get('/api/users/friends/status', config);
+          setFriends(data || []);
+        } catch (err) {
+          console.error('Failed to fetch friends for mentions', err);
+        }
+      };
+      fetchFriends();
+    }
+  }, [expanded, user?.token, friends.length]);
 
 
   useEffect(() => {
@@ -497,13 +532,25 @@ const PostCard = ({ post: initialPost }) => {
                           {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <Input
-                        placeholder={`Reply to ${comment.author?.firstName || comment.author?.lastName ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() : comment.author?.username}...`}
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        className="flex-1 bg-background/40 backdrop-blur-sm h-8 text-xs border-blue-500/20 focus:border-blue-500/50"
-                        autoFocus
-                      />
+                      <div className="flex-1 relative">
+                        <Input
+                          ref={replyInputRef}
+                          placeholder={`Reply to ${comment.author?.firstName || comment.author?.lastName ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() : comment.author?.username}...`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          onKeyUp={replyMention.checkMention}
+                          onSelect={replyMention.checkMention}
+                          className="w-full bg-background/40 backdrop-blur-sm h-8 text-xs border-blue-500/20 focus:border-blue-500/50"
+                          autoFocus
+                        />
+                        {replyMention.showSuggestions && (
+                          <MentionDropdown
+                            friends={replyMention.filteredFriends}
+                            onSelect={replyMention.handleSelect}
+                            className="bottom-9 left-0"
+                          />
+                        )}
+                      </div>
                       <Button type="submit" size="icon" isLoading={isSubmittingReply} disabled={!replyText.trim()} className="h-8 w-8 shrink-0">
                         <Reply size={14} />
                       </Button>
@@ -521,12 +568,24 @@ const PostCard = ({ post: initialPost }) => {
                   {user?.username?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Input
-                placeholder="Write a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="flex-1 bg-background/40 backdrop-blur-sm h-9 text-sm border-blue-500/20 focus:border-blue-500/50"
-              />
+              <div className="flex-1 relative">
+                <Input
+                  ref={commentInputRef}
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyUp={commentMention.checkMention}
+                  onSelect={commentMention.checkMention}
+                  className="w-full bg-background/40 backdrop-blur-sm h-9 text-sm border-blue-500/20 focus:border-blue-500/50"
+                />
+                {commentMention.showSuggestions && (
+                  <MentionDropdown
+                    friends={commentMention.filteredFriends}
+                    onSelect={commentMention.handleSelect}
+                    className="bottom-10 left-0"
+                  />
+                )}
+              </div>
               <Button type="submit" size="icon" isLoading={isSubmittingComment} disabled={!commentText.trim()} className="h-9 w-9 shrink-0">
                 <Send size={16} />
               </Button>

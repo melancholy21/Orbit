@@ -12,11 +12,14 @@ import { Separator } from '../components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import useMentionAutocomplete from '../hooks/useMentionAutocomplete';
+import MentionDropdown from '../components/MentionDropdown';
 
 const Home = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const postInputRef = useRef(null);
   
   const { user } = useSelector((state) => state.auth);
   const { posts, isLoading, isError, message } = useSelector((state) => state.posts);
@@ -27,6 +30,14 @@ const Home = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [lobbyCount, setLobbyCount] = useState(0);
   const [visibility, setVisibility] = useState('friends');
+  const [friends, setFriends] = useState([]);
+
+  const {
+    showSuggestions,
+    filteredFriends,
+    handleSelect,
+    checkMention
+  } = useMentionAutocomplete(content, setContent, postInputRef, friends);
 
   useEffect(() => {
     if (isError) {
@@ -36,6 +47,21 @@ const Home = () => {
 
     if (user?.token) {
       dispatch(getPosts());
+    }
+
+    // Fetch friends list for mentions
+    const fetchFriends = async () => {
+      try {
+        const { data } = await axios.get('/api/users/friends/status', {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        setFriends(data || []);
+      } catch (err) {
+        console.error('Failed to fetch friends for mentions', err);
+      }
+    };
+    if (user?.token) {
+      fetchFriends();
     }
 
     // Check lobby presence
@@ -147,12 +173,24 @@ const Home = () => {
                 {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
-            <textarea
-              placeholder="What's on your mind?"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="flex-1 min-h-[80px] bg-background/40 backdrop-blur-sm text-foreground text-sm p-3 rounded-xl border border-border/50 hover:border-border hover:bg-muted/50 focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background/60 transition-all resize-none outline-none"
-            />
+            <div className="flex-1 relative">
+              <textarea
+                ref={postInputRef}
+                placeholder="What's on your mind?"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onKeyUp={checkMention}
+                onSelect={checkMention}
+                className="w-full min-h-[80px] bg-background/40 backdrop-blur-sm text-foreground text-sm p-3 rounded-xl border border-border/50 hover:border-border hover:bg-muted/50 focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background/60 transition-all resize-none outline-none"
+              />
+              {showSuggestions && (
+                <MentionDropdown
+                  friends={filteredFriends}
+                  onSelect={handleSelect}
+                  className="left-0 mt-1"
+                />
+              )}
+            </div>
           </div>
           
           {/* Image Preview */}

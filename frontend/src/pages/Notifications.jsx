@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Heart, MessageCircle, UserPlus, HandMetal, Loader2, Check, Share, UserCheck } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, HandMetal, Loader2, Check, Share, UserCheck, AtSign } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -72,6 +72,7 @@ const Notifications = () => {
       case 'share': return <Share size={16} className="text-green-500" />;
       case 'friend_request': return <UserPlus size={16} className="text-purple-500" />;
       case 'friend_accept': return <UserCheck size={16} className="text-purple-500" />;
+      case 'mention': return <AtSign size={16} className="text-violet-500" />;
       default: return <Bell size={16} />;
     }
   };
