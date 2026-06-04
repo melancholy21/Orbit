@@ -69,25 +69,48 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       }
     }
 
-    let finalChildren = children
+    let finalChildren = children;
     if (isLoading) {
-      if (asChild && React.isValidElement(children)) {
-        const childProps = children.props as { children?: React.ReactNode }
-        finalChildren = React.cloneElement(
-          children,
-          {},
-          <>
-            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
-            {childProps.children}
-          </>
-        )
+      if (size === "icon") {
+        finalChildren = <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />;
+      } else if (asChild && React.isValidElement(children)) {
+        const childProps = children.props as { children?: React.ReactNode };
+        const innerChildren = childProps.children;
+        const childrenArray = React.Children.toArray(innerChildren);
+        if (
+          childrenArray.length > 0 &&
+          React.isValidElement(childrenArray[0]) &&
+          typeof childrenArray[0].type !== 'string'
+        ) {
+          childrenArray[0] = <Loader2 key="button-loader" className="h-4 w-4 animate-spin text-current shrink-0" />;
+          finalChildren = React.cloneElement(children, {}, <>{childrenArray}</>);
+        } else {
+          finalChildren = React.cloneElement(
+            children,
+            {},
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+              {innerChildren}
+            </>
+          );
+        }
       } else {
-        finalChildren = (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
-            {children}
-          </>
-        )
+        const childrenArray = React.Children.toArray(children);
+        if (
+          childrenArray.length > 0 &&
+          React.isValidElement(childrenArray[0]) &&
+          typeof childrenArray[0].type !== 'string'
+        ) {
+          childrenArray[0] = <Loader2 key="button-loader" className="h-4 w-4 animate-spin text-current shrink-0" />;
+          finalChildren = <>{childrenArray}</>;
+        } else {
+          finalChildren = (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+              {children}
+            </>
+          );
+        }
       }
     }
 

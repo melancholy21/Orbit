@@ -21,6 +21,7 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'appearance' | 'spotify'
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Profile forms
   const [profileForm, setProfileForm] = useState({
@@ -45,9 +46,16 @@ const Settings = () => {
     }
   }, [user]);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login');
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await dispatch(logout());
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoggingOut(false);
+      navigate('/login');
+    }
   };
 
   const handleProfileChange = (e) => {
@@ -358,8 +366,21 @@ const Settings = () => {
       </Card>
 
       {/* Logout */}
-      <Button onClick={handleLogout} variant="destructive" className="w-full gap-2 h-12 text-sm font-bold rounded-xl bg-red-600/10 border border-red-600/25 text-red-400 hover:bg-red-600 hover:text-white transition-all mt-4 shadow-sm shadow-red-600/5">
-        <LogOut size={18} /> Log Out
+      <Button 
+        onClick={handleLogout} 
+        disabled={isLoggingOut}
+        variant="destructive" 
+        className="w-full gap-2 h-12 text-sm font-bold rounded-xl bg-red-600/10 border border-red-600/25 text-red-400 hover:bg-red-600 hover:text-white transition-all mt-4 shadow-sm shadow-red-600/5"
+      >
+        {isLoggingOut ? (
+          <>
+            <Loader2 size={18} className="animate-spin" /> Logging Out...
+          </>
+        ) : (
+          <>
+            <LogOut size={18} /> Log Out
+          </>
+        )}
       </Button>
     </div>
   );

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { onlineUsers } from '../socket.js';
@@ -59,7 +60,12 @@ const cleanUserRelationships = (user) => {
 
 export const getUserProfile = async (req, res, next) => {
   try {
-    let user = await User.findById(req.params.id);
+    let user;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      user = await User.findById(req.params.id);
+    } else {
+      user = await User.findOne({ username: req.params.id });
+    }
 
     if (!user) {
       res.status(404);

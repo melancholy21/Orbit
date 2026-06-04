@@ -14,6 +14,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { getImageUrl } from '../lib/utils';
 import useAsyncAction from '../hooks/useAsyncAction';
 import toast from 'react-hot-toast';
+import { formatText } from '../lib/textParser';
 
 
 
@@ -349,7 +350,7 @@ const PostCard = ({ post: initialPost }) => {
 
             return (
               <div>
-                <p className="text-sm whitespace-pre-wrap break-words">{displayText}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{formatText(displayText)}</p>
                 {isTooLong && (
                   <button
                     onClick={() => setShowFullContent(!showFullContent)}
@@ -449,7 +450,7 @@ const PostCard = ({ post: initialPost }) => {
                             ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim()
                             : comment.author?.username}
                         </p>
-                        <p className="text-sm">{comment.content}</p>
+                        <p className="text-sm">{formatText(comment.content)}</p>
                       </div>
                       <div className="flex items-center mt-1 ml-1">
                         <button
@@ -480,7 +481,7 @@ const PostCard = ({ post: initialPost }) => {
                                   ? `${reply.author.firstName || ''} ${reply.author.lastName || ''}`.trim()
                                   : reply.author?.username}
                               </p>
-                              <p className="text-xs">{reply.content}</p>
+                              <p className="text-xs">{formatText(reply.content)}</p>
                             </div>
                           </div>
                         </div>
