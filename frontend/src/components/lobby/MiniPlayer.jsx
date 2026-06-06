@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Music, SkipForward } from 'lucide-react';
 import { useLobby } from '../../context/LobbyContext';
+import { formatFullName } from '../../lib/utils';
 
 const getSpotifyTrackUrl = (spotifyTrack, queueTrack) => {
   if (spotifyTrack?.id) {
@@ -101,7 +102,7 @@ const MiniPlayer = () => {
               </p>
             )}
             <p className="text-[10px] text-muted-foreground truncate">
-              {currentSpotifyTrack?.artists?.map(a => a.name).join(', ') || `Added by ${currentTrack.addedBy?.username}`}
+              {currentSpotifyTrack?.artists?.map(a => a.name).join(', ') || `Added by ${formatFullName(currentTrack.addedBy)}`}
             </p>
           </div>
         </div>

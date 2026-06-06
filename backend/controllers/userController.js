@@ -64,7 +64,8 @@ export const getUserProfile = async (req, res, next) => {
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
       user = await User.findById(req.params.id);
     } else {
-      user = await User.findOne({ username: req.params.id });
+      const escapedUsername = req.params.id.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      user = await User.findOne({ username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } });
     }
 
     if (!user) {
@@ -207,7 +208,7 @@ export const getFriendsWithStatus = async (req, res, next) => {
 
     const friends = await User.find({
       _id: { $in: friendIds }
-    }).select('username profilePicture status');
+    }).select('username profilePicture status firstName lastName');
 
     const friendsWithOnline = friends.map(f => ({
       ...f.toObject(),

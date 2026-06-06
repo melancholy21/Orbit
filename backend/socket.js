@@ -76,7 +76,7 @@ const initSocket = (httpServer) => {
         const messages = await LobbyMessage.find({ roomId })
           .sort({ createdAt: -1 })
           .limit(50)
-          .populate('sender', 'username profilePicture');
+          .populate('sender', 'username profilePicture firstName lastName');
 
         socket.emit('chatHistory', messages.reverse());
       } catch (err) {
@@ -158,7 +158,7 @@ const initSocket = (httpServer) => {
           text: text.trim()
         });
 
-        const populated = await msg.populate('sender', 'username profilePicture');
+        const populated = await msg.populate('sender', 'username profilePicture firstName lastName');
 
         io.to(roomId).emit('newMessage', {
           _id: populated._id,

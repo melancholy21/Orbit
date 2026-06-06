@@ -7,6 +7,7 @@ import { Bell, Heart, MessageCircle, UserPlus, HandMetal, Loader2, Check, Share,
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -116,7 +117,7 @@ const Notifications = () => {
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={notif.sender?.profilePicture} />
                   <AvatarFallback className="bg-primary/20 text-primary">
-                    {(notif.sender?.firstName || notif.sender?.lastName) ? (notif.sender.firstName ? notif.sender.firstName.charAt(0).toUpperCase() : notif.sender.lastName.charAt(0).toUpperCase()) : notif.sender?.username ? notif.sender.username.charAt(0).toUpperCase() : '?'}
+                    {getInitials(notif.sender)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 border border-border/50">
@@ -127,9 +128,7 @@ const Notifications = () => {
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className="text-sm text-foreground">
                   <span className="font-bold">
-                    {notif.sender?.firstName || notif.sender?.lastName
-                      ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim()
-                      : notif.sender?.username || 'Deleted User'}
+                    {formatFullName(notif.sender)}
                   </span>{' '}
                   {notif.content}
                 </p>

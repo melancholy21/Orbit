@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import StatusDrawer from './StatusDrawer';
 import userService from '../features/users/userService';
 import toast from 'react-hot-toast';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const StatusBar = () => {
   const { user } = useSelector((state) => state.auth);
@@ -145,7 +146,7 @@ const StatusBar = () => {
               <Avatar className={`w-16 h-16 border-2 transition-all ${isStatusActive(currentUserStatus) && currentUserStatus?.isFree ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'border-transparent'}`}>
                 <AvatarImage src={user?.profilePicture} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                  {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase()}
+                  {getInitials(user)}
                 </AvatarFallback>
               </Avatar>
 
@@ -198,7 +199,7 @@ const StatusBar = () => {
                     <Avatar className={`w-16 h-16 border-2 transition-all ${isFree ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'border-transparent'}`}>
                       <AvatarImage src={friend.profilePicture} />
                       <AvatarFallback className="bg-muted text-muted-foreground text-xl">
-                        {(friend.firstName || friend.lastName) ? (friend.firstName ? friend.firstName.charAt(0).toUpperCase() : friend.lastName.charAt(0).toUpperCase()) : friend.username?.charAt(0).toUpperCase()}
+                        {getInitials(friend)}
                       </AvatarFallback>
                     </Avatar>
 
@@ -209,7 +210,7 @@ const StatusBar = () => {
                     )}
                   </div>
                   <span className="text-xs font-medium text-muted-foreground truncate w-16 text-center">
-                    {friend.username}
+                    {formatFullName(friend)}
                   </span>
 
                   {/* We render the popover globally outside the map later to avoid clipping */}
@@ -258,9 +259,7 @@ const StatusBar = () => {
                   <div className="flex justify-between items-start mb-1 gap-2">
                     <div className="flex flex-col min-w-0">
                       <span className="font-semibold text-sm break-all overflow-hidden leading-tight">
-                        {friend.firstName || friend.lastName 
-                          ? `${friend.firstName || ''} ${friend.lastName || ''}`.trim() 
-                          : friend.username}
+                        {formatFullName(friend)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">@{friend.username}</span>
                     </div>

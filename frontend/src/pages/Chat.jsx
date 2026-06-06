@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { useLobby } from '../context/LobbyContext'; // For global socket
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const Chat = () => {
   const { userId } = useParams(); // ID of the user we are chatting with
@@ -286,14 +287,12 @@ const Chat = () => {
             <Avatar className="w-8 h-8 shrink-0">
               <AvatarImage src={otherUser.profilePicture} />
               <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {(otherUser.firstName || otherUser.lastName) ? (otherUser.firstName ? otherUser.firstName.charAt(0).toUpperCase() : otherUser.lastName.charAt(0).toUpperCase()) : otherUser.username.charAt(0).toUpperCase()}
+                {getInitials(otherUser)}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
               <h2 className="font-bold text-foreground text-sm leading-tight truncate">
-                {otherUser.firstName || otherUser.lastName 
-                  ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() 
-                  : otherUser.username}
+                {formatFullName(otherUser)}
               </h2>
               <span className="text-[10px] text-muted-foreground leading-none">@{otherUser.username}</span>
             </div>

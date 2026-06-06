@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { formatFullName, getInitials } from '../lib/utils';
 
 /**
  * Glassmorphic dropdown displaying list of friends to mention.
@@ -28,14 +29,12 @@ export default function MentionDropdown({ friends, onSelect, className = '' }) {
           <Avatar className="w-6 h-6">
             <AvatarImage src={friend.profilePicture} />
             <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-              {friend.username?.charAt(0).toUpperCase()}
+              {getInitials(friend)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col min-w-0">
             <span className="text-foreground text-xs leading-none font-semibold truncate">
-              {friend.firstName || friend.lastName
-                ? `${friend.firstName || ''} ${friend.lastName || ''}`.trim()
-                : friend.username}
+              {formatFullName(friend)}
             </span>
             <span className="text-[9px] text-muted-foreground leading-none mt-0.5">
               @{friend.username}

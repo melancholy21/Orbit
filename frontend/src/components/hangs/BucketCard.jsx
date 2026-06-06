@@ -3,6 +3,7 @@ import { HandMetal, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
+import { formatFullName, getInitials } from '../../lib/utils';
 
 const BucketCard = ({ item, currentUserId, onToggleImIn, onDelete }) => {
   const isImIn = item.imIn?.some(u => u._id === currentUserId);
@@ -22,9 +23,7 @@ const BucketCard = ({ item, currentUserId, onToggleImIn, onDelete }) => {
           <h3 className="font-semibold text-base text-foreground leading-snug">{item.title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
             by <span className="font-medium text-foreground/70">
-              {item.author?.firstName || item.author?.lastName 
-                ? `${item.author.firstName || ''} ${item.author.lastName || ''}`.trim() 
-                : item.author?.username}
+              {formatFullName(item.author)}
             </span>
           </p>
         </div>
@@ -60,7 +59,7 @@ const BucketCard = ({ item, currentUserId, onToggleImIn, onDelete }) => {
             <Avatar key={user._id} className="w-7 h-7 border-2 border-background shadow-sm">
               <AvatarImage src={user.profilePicture} />
               <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                {(user.firstName || user.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user.username?.charAt(0).toUpperCase()}
+                {getInitials(user)}
               </AvatarFallback>
             </Avatar>
           ))}

@@ -3,6 +3,7 @@ import { Send } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { formatFullName, getInitials } from '../../lib/utils';
 
 const LobbyChat = ({ messages, onSendMessage, currentUserId }) => {
   const [text, setText] = useState('');
@@ -82,14 +83,14 @@ const LobbyChat = ({ messages, onSendMessage, currentUserId }) => {
                   <Avatar className="w-7 h-7 shrink-0 mt-0.5">
                     <AvatarImage src={msg.sender?.profilePicture} />
                     <AvatarFallback className="text-[9px] bg-primary/20 text-primary">
-                      {msg.sender?.username?.charAt(0).toUpperCase()}
+                      {getInitials(msg.sender)}
                     </AvatarFallback>
                   </Avatar>
                 )}
                 <div className={`max-w-[75%] min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                   {!isOwn && (
                     <p className="text-[10px] text-muted-foreground font-medium mb-0.5 px-1">
-                      {msg.sender?.username}
+                      {formatFullName(msg.sender)}
                     </p>
                   )}
                   <div className={`px-3 py-2 rounded-2xl text-sm break-words ${

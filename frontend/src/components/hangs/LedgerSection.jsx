@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
+import { formatFullName, getInitials } from '../../lib/utils';
 
 const LedgerSection = ({ bills, balance, currentUserId, onSettle, onDelete }) => {
   const net = (balance?.youAreOwed || 0) - (balance?.youOwe || 0);
@@ -70,13 +71,11 @@ const LedgerSection = ({ bills, balance, currentUserId, onSettle, onDelete }) =>
                       <Avatar className="w-5 h-5">
                         <AvatarImage src={bill.payer?.profilePicture} />
                         <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                          {(bill.payer?.firstName || bill.payer?.lastName) ? (bill.payer.firstName ? bill.payer.firstName.charAt(0).toUpperCase() : bill.payer.lastName.charAt(0).toUpperCase()) : bill.payer?.username?.charAt(0).toUpperCase()}
+                          {getInitials(bill.payer)}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm text-muted-foreground">
-                        {isPayer ? 'You' : (bill.payer?.firstName || bill.payer?.lastName 
-                          ? `${bill.payer.firstName || ''} ${bill.payer.lastName || ''}`.trim() 
-                          : bill.payer?.username)} paid <span className="font-semibold text-foreground">₱{bill.amount.toFixed(2)}</span>
+                        {isPayer ? 'You' : formatFullName(bill.payer)} paid <span className="font-semibold text-foreground">₱{bill.amount.toFixed(2)}</span>
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -118,7 +117,7 @@ const LedgerSection = ({ bills, balance, currentUserId, onSettle, onDelete }) =>
                         <Avatar className={`w-6 h-6 border ${pSettled ? 'border-green-500' : 'border-border'}`}>
                           <AvatarImage src={p.profilePicture} />
                           <AvatarFallback className="text-[8px] bg-muted">
-                            {(p.firstName || p.lastName) ? (p.firstName ? p.firstName.charAt(0).toUpperCase() : p.lastName.charAt(0).toUpperCase()) : p.username?.charAt(0).toUpperCase()}
+                            {getInitials(p)}
                           </AvatarFallback>
                         </Avatar>
                         {pSettled && (

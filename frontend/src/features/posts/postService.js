@@ -85,6 +85,42 @@ const sharePost = async (postId, token) => {
   return { id: postId, shares: response.data };
 };
 
+// Edit comment
+const editComment = async (commentId, commentData, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.put(API_URL + 'comments/' + commentId, commentData, config);
+  return response.data;
+};
+
+// Delete comment
+const deleteComment = async (commentId, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.delete(API_URL + 'comments/' + commentId, config);
+  return response.data;
+};
+
+// Edit reply
+const editReply = async (commentId, replyId, replyData, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.put(`${API_URL}comments/${commentId}/replies/${replyId}`, replyData, config);
+  return response.data;
+};
+
+// Delete reply
+const deleteReply = async (commentId, replyId, token) => {
+  const config = {
+    headers: { Authorization: `Bearer ${token}` }
+  };
+  const response = await axios.delete(`${API_URL}comments/${commentId}/replies/${replyId}`, config);
+  return response.data;
+};
+
 const postService = {
   getPosts,
   createPost,
@@ -93,7 +129,11 @@ const postService = {
   deletePost,
   editPost,
   addReply,
-  sharePost
+  sharePost,
+  editComment,
+  deleteComment,
+  editReply,
+  deleteReply
 };
 
 export default postService;

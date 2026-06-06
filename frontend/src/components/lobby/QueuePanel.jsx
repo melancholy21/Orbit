@@ -3,6 +3,7 @@ import { Plus, ListMusic, Trash2, X } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { formatFullName } from '../../lib/utils';
 
 const getSpotifyUrl = (url) => {
   if (!url) return null;
@@ -135,7 +136,7 @@ const QueuePanel = ({ queue, currentTrackIndex, onAddToQueue, onClearQueue }) =>
                       ) : (
                         <p className="truncate text-foreground">{item.title}</p>
                       )}
-                      <p className="text-[10px] text-muted-foreground">{item.addedBy?.username}</p>
+                      <p className="text-[10px] text-muted-foreground">{formatFullName(item.addedBy)}</p>
                     </div>
                   </div>
                 ))}

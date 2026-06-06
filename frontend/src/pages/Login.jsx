@@ -23,17 +23,25 @@ const Login = () => {
     (state) => state.auth
   );
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Handle login success or error states
   useEffect(() => {
     if (isError) {
       toast.error(message);
+      dispatch(reset());
     }
 
-    if (isSuccess || user) {
+    if (isSuccess) {
       navigate('/');
+      dispatch(reset());
     }
-
-    dispatch(reset());
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [isSuccess, isError, message, navigate, dispatch]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -97,6 +105,7 @@ const Login = () => {
               type="email"
               name="email"
               placeholder="Email"
+              aria-label="Email Address"
               value={email}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"
@@ -108,6 +117,7 @@ const Login = () => {
               type="password"
               name="password"
               placeholder="Password"
+              aria-label="Password"
               value={password}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"

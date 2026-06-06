@@ -164,7 +164,7 @@ const Home = () => {
         </button>
       )}
       {/* Create Post Card */}
-      <Card className="w-full">
+      <Card className={`w-full ${showSuggestions ? 'relative z-20' : ''}`}>
         <CardContent className="pt-6">
           <div className="flex gap-3 items-start mb-4">
             <Avatar className="cursor-pointer hover:scale-105 transition-transform mt-1">
@@ -173,7 +173,7 @@ const Home = () => {
                 {(user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 relative">
+            <div className={`flex-1 relative ${showSuggestions ? 'z-30' : ''}`}>
               <textarea
                 ref={postInputRef}
                 placeholder="What's on your mind?"

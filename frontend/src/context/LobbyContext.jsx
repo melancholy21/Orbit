@@ -50,6 +50,11 @@ export const LobbyProvider = ({ children }) => {
   const token = user?.spotifyAccessToken;
   const dispatch = useDispatch();
 
+  const tokenRef = useRef(token);
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
   const lastToastTime = useRef(0);
   const lastToastMessage = useRef('');
 
@@ -295,7 +300,30 @@ export const LobbyProvider = ({ children }) => {
     window.onSpotifyWebPlaybackSDKReady = () => {
       const spotifyPlayer = new window.Spotify.Player({
         name: 'Orbit Lobby',
-        getOAuthToken: cb => { cb(token); },
+        getOAuthToken: async cb => {
+          let currentToken = tokenRef.current;
+          if (!currentToken) {
+            cb('');
+            return;
+          }
+          try {
+            // Check if token is valid by making a quick request to Spotify
+            await axios.get('https://api.spotify.com/v1/me', {
+              headers: { Authorization: `Bearer ${currentToken}` }
+            });
+            cb(currentToken);
+          } catch (err) {
+            if (err.response?.status === 401) {
+              console.log('Spotify token expired in getOAuthToken. Refreshing...');
+              const newToken = await handleRefreshSpotifyToken();
+              if (newToken) {
+                cb(newToken);
+                return;
+              }
+            }
+            cb(currentToken);
+          }
+        },
         volume: volume
       });
 
@@ -353,7 +381,7 @@ export const LobbyProvider = ({ children }) => {
         // script might already be removed
       }
     };
-  }, [token]);
+  }, [!!token]);
 
   // Fetch track metadata on mobile
   useEffect(() => {

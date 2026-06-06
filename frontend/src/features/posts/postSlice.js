@@ -105,6 +105,50 @@ export const addReply = createAsyncThunk('posts/addReply', async (replyData, thu
   }
 });
 
+export const editComment = createAsyncThunk('posts/editComment', async ({ commentId, content }, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
+    return await postService.editComment(commentId, { content }, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+export const deleteComment = createAsyncThunk('posts/deleteComment', async (commentId, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
+    return await postService.deleteComment(commentId, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+export const editReply = createAsyncThunk('posts/editReply', async ({ commentId, replyId, content }, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
+    return await postService.editReply(commentId, replyId, { content }, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+export const deleteReply = createAsyncThunk('posts/deleteReply', async ({ commentId, replyId }, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user?.token;
+    if (!token) return thunkAPI.rejectWithValue('No token found');
+    return await postService.deleteReply(commentId, replyId, token);
+  } catch (error) {
+    const message = (error.response && error.response.data && error.response.data.message) || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 export const postSlice = createSlice({
   name: 'posts',
   initialState,
@@ -169,6 +213,54 @@ export const postSlice = createSlice({
       .addCase(addReply.fulfilled, (state, action) => {
         const updatedComment = action.payload;
         // Find the post that owns this comment
+        state.posts = state.posts.map(post => {
+          if (post._id === updatedComment.post) {
+            return {
+              ...post,
+              comments: post.comments.map(c => c._id === updatedComment._id ? updatedComment : c)
+            };
+          }
+          return post;
+        });
+      })
+      .addCase(editComment.fulfilled, (state, action) => {
+        const updatedComment = action.payload;
+        state.posts = state.posts.map(post => {
+          if (post._id === updatedComment.post) {
+            return {
+              ...post,
+              comments: post.comments.map(c => c._id === updatedComment._id ? updatedComment : c)
+            };
+          }
+          return post;
+        });
+      })
+      .addCase(deleteComment.fulfilled, (state, action) => {
+        const { commentId, postId } = action.payload;
+        state.posts = state.posts.map(post => {
+          if (post._id === postId) {
+            return {
+              ...post,
+              comments: post.comments.filter(c => c._id !== commentId)
+            };
+          }
+          return post;
+        });
+      })
+      .addCase(editReply.fulfilled, (state, action) => {
+        const updatedComment = action.payload;
+        state.posts = state.posts.map(post => {
+          if (post._id === updatedComment.post) {
+            return {
+              ...post,
+              comments: post.comments.map(c => c._id === updatedComment._id ? updatedComment : c)
+            };
+          }
+          return post;
+        });
+      })
+      .addCase(deleteReply.fulfilled, (state, action) => {
+        const updatedComment = action.payload;
         state.posts = state.posts.map(post => {
           if (post._id === updatedComment.post) {
             return {

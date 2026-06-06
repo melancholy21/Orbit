@@ -25,23 +25,26 @@ const Register = () => {
     (state) => state.auth
   );
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Handle registration success or error states
   useEffect(() => {
     if (isError) {
       toast.error(message);
+      dispatch(reset());
     }
 
     // If registration succeeded, redirect to verification page
     if (isSuccess && pendingEmail) {
       navigate(`/verify-email?email=${encodeURIComponent(pendingEmail)}`);
+      dispatch(reset());
     }
-
-    // If already logged in, go home
-    if (user) {
-      navigate('/');
-    }
-
-    dispatch(reset());
-  }, [user, isError, isSuccess, message, pendingEmail, navigate, dispatch]);
+  }, [isSuccess, isError, message, pendingEmail, navigate, dispatch]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -112,6 +115,7 @@ const Register = () => {
             <Input
               name="username"
               placeholder="Username"
+              aria-label="Username"
               value={username}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"
@@ -123,6 +127,7 @@ const Register = () => {
               type="email"
               name="email"
               placeholder="Email"
+              aria-label="Email Address"
               value={email}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"
@@ -134,6 +139,7 @@ const Register = () => {
               type="password"
               name="password"
               placeholder="Password"
+              aria-label="Password"
               value={password}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"
@@ -145,6 +151,7 @@ const Register = () => {
               type="password"
               name="confirmPassword"
               placeholder="Confirm Password"
+              aria-label="Confirm Password"
               value={confirmPassword}
               onChange={onChange}
               className="bg-background/40 backdrop-blur-sm border-blue-500/20 focus:border-blue-500/50"

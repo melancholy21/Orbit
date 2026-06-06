@@ -8,8 +8,8 @@ import { Link } from 'react-router-dom';
 export function formatText(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // Combined regex to capture URLs and @mentions
-  const regex = /((?:https?:\/\/[^\s]+|www\.[^\s]+)|@(?:[a-zA-Z0-9._-]+))/gi;
+  // Combined regex to capture URLs, Markdown mentions (@[username](userId)), and legacy @username mentions
+  const regex = /((?:https?:\/\/[^\s]+|www\.[^\s]+)|@\[[^\]]+\]\([a-fA-F0-9]{24}\)|@(?:[a-zA-Z0-9._-]+))/gi;
 
   const parts = text.split(regex);
   if (parts.length === 1) return text;
@@ -46,7 +46,26 @@ export function formatText(text) {
       );
     }
 
-    // 3. Mentions
+    // 3. Markdown Mentions: @[username](userId)
+    if (part.startsWith('@[') && part.includes('](')) {
+      const match = part.match(/^@\[([^\]]+)\]\(([^)]+)\)$/);
+      if (match) {
+        const username = match[1];
+        const userId = match[2];
+        return (
+          <Link
+            key={index}
+            to={`/profile/${userId}`}
+            className="text-blue-400 hover:text-blue-300 hover:underline font-bold"
+            onClick={(e) => e.stopPropagation()}
+          >
+            @{username}
+          </Link>
+        );
+      }
+    }
+
+    // 4. Legacy Mentions: @username
     if (part.startsWith('@')) {
       const username = part.slice(1);
       return (
@@ -61,7 +80,7 @@ export function formatText(text) {
       );
     }
 
-    // 4. Plain text
+    // 5. Plain text
     return part;
   });
 }

@@ -26,3 +26,21 @@ export function getImageUrl(path, options) {
   const baseUrl = apiUrl.replace(/\/api\/?$/, '');
   return `${baseUrl}/${cleanPath}`;
 }
+
+export function formatFullName(user) {
+  if (!user) return 'Deleted User';
+  if (user.firstName || user.lastName) {
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  }
+  return user.username || 'Deleted User';
+}
+
+export function getInitials(user) {
+  if (!user) return '?';
+  if (user.firstName || user.lastName) {
+    const firstInitial = user.firstName ? user.firstName.charAt(0) : '';
+    const lastInitial = user.lastName ? user.lastName.charAt(0) : '';
+    return (firstInitial + lastInitial).toUpperCase() || '?';
+  }
+  return user.username ? user.username.charAt(0).toUpperCase() : '?';
+}

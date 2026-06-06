@@ -11,7 +11,7 @@ import { Input } from '../components/ui/input';
 import userService from '../features/users/userService';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { getImageUrl } from '../lib/utils';
+import { getImageUrl, formatFullName, getInitials } from '../lib/utils';
 
 
 const Settings = () => {
@@ -128,11 +128,11 @@ const Settings = () => {
             {user?.profilePicture ? (
               <img src={getImageUrl(user.profilePicture)} alt="avatar" className="w-full h-full object-cover" />
             ) : (
-              (user?.firstName || user?.lastName) ? (user.firstName ? user.firstName.charAt(0).toUpperCase() : user.lastName.charAt(0).toUpperCase()) : user?.username?.charAt(0).toUpperCase()
+              getInitials(user)
             )}
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">{user?.username}</h2>
+            <h2 className="text-lg font-bold text-foreground">{formatFullName(user)}</h2>
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>

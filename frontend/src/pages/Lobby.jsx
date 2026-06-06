@@ -13,6 +13,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { useLobby } from '../context/LobbyContext';
 import toast from 'react-hot-toast';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const formatTime = (ms) => {
   if (!ms) return '0:00';
@@ -691,9 +692,9 @@ const Lobby = () => {
             <p className="text-xs xs:text-sm text-muted-foreground truncate mt-0.5 sm:mt-1 spotify-track-artist">
               {currentSpotifyTrack?.artists?.map(a => a.name).join(', ') || 'Unknown Artist'}
             </p>
-            {currentTrack?.addedBy?.username && (
+            {currentTrack?.addedBy && (
               <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 mt-0.5 sm:mt-1">
-                Added by {currentTrack.addedBy.username}
+                Added by {formatFullName(currentTrack.addedBy)}
               </p>
             )}
           </div>
@@ -914,7 +915,7 @@ const Lobby = () => {
               ) : queue.map((item, idx) => (
                 <div key={item.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${idx === currentTrackIndex ? 'bg-violet-500/15 border border-violet-500/20' : idx < currentTrackIndex ? 'opacity-40' : 'hover:bg-white/5'}`}>
                   <span className={`w-6 text-center text-xs font-bold shrink-0 ${idx === currentTrackIndex ? 'text-violet-400' : 'text-muted-foreground'}`}>{idx === currentTrackIndex ? '▶' : idx + 1}</span>
-                  <div className="flex-1 min-w-0"><p className={`text-sm truncate ${idx === currentTrackIndex ? 'text-violet-300 font-semibold' : 'text-foreground'}`}>{item.title}</p><p className="text-[10px] text-muted-foreground">{item.addedBy?.username}</p></div>
+                  <div className="flex-1 min-w-0"><p className={`text-sm truncate ${idx === currentTrackIndex ? 'text-violet-300 font-semibold' : 'text-foreground'}`}>{item.title}</p><p className="text-[10px] text-muted-foreground">{formatFullName(item.addedBy)}</p></div>
                 </div>
               ))}
             </div>
@@ -951,11 +952,11 @@ const Lobby = () => {
                   {u.profilePicture ? (
                     <img src={u.profilePicture} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    u.username?.charAt(0).toUpperCase()
+                    getInitials(u)
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{u.username}</p>
+                  <p className="text-sm font-semibold truncate">{formatFullName(u)}</p>
                   <p className="text-[10px] text-muted-foreground capitalize">{u.mode || 'active'}</p>
                 </div>
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
@@ -1064,10 +1065,10 @@ const Lobby = () => {
                           {friend.profilePicture ? (
                             <img src={friend.profilePicture} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            friend.username?.charAt(0).toUpperCase()
+                            getInitials(friend)
                           )}
                         </div>
-                        <span className="text-xs font-semibold">{friend.username}</span>
+                        <span className="text-xs font-semibold">{formatFullName(friend)}</span>
                       </div>
                       <Button
                         onClick={() => handleSendInvite(friend._id)}

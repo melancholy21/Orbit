@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Trash2, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card } from '../ui/card';
+import { formatFullName, getInitials } from '../../lib/utils';
 
 const PollCard = ({ poll, currentUserId, onVote, onDelete }) => {
   const isAuthor = poll.author?._id === currentUserId;
@@ -40,9 +41,7 @@ const PollCard = ({ poll, currentUserId, onVote, onDelete }) => {
           <h3 className="font-semibold text-base text-foreground">{poll.question}</h3>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-sm text-muted-foreground">
-              by {poll.author?.firstName || poll.author?.lastName 
-                ? `${poll.author.firstName || ''} ${poll.author.lastName || ''}`.trim() 
-                : poll.author?.username}
+              by {formatFullName(poll.author)}
             </span>
             <span className="text-sm text-muted-foreground flex items-center gap-1">
               <Clock size={12} />
@@ -108,7 +107,7 @@ const PollCard = ({ poll, currentUserId, onVote, onDelete }) => {
                     <Avatar key={voter._id || voter} className="w-6 h-6 border border-background">
                       <AvatarImage src={voter.profilePicture} />
                       <AvatarFallback className="bg-primary/20 text-primary text-[9px]">
-                        {(voter.firstName || voter.lastName) ? (voter.firstName ? voter.firstName.charAt(0).toUpperCase() : voter.lastName.charAt(0).toUpperCase()) : voter.username?.charAt(0).toUpperCase()}
+                        {getInitials(voter)}
                       </AvatarFallback>
                     </Avatar>
                   ))}

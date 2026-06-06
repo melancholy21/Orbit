@@ -1,6 +1,7 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Users } from 'lucide-react';
+import { formatFullName, getInitials } from '../../lib/utils';
 
 const PresenceBar = ({ users }) => {
   if (!users || users.length === 0) {
@@ -29,7 +30,7 @@ const PresenceBar = ({ users }) => {
               }`}>
                 <AvatarImage src={user.profilePicture} />
                 <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold">
-                  {user.username?.charAt(0).toUpperCase()}
+                  {getInitials(user)}
                 </AvatarFallback>
               </Avatar>
               {/* Mode indicator dot */}
@@ -38,7 +39,7 @@ const PresenceBar = ({ users }) => {
               }`} />
             </div>
             <span className="text-[10px] text-muted-foreground font-medium max-w-[60px] truncate flex items-center gap-0.5 justify-center">
-              {user.isOwner && <span>👑</span>} {user.username}
+              {user.isOwner && <span>👑</span>} {formatFullName(user)}
             </span>
           </div>
         ))}

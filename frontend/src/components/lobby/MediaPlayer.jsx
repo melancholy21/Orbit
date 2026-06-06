@@ -2,6 +2,7 @@ import React from 'react';
 import { Volume2, VolumeX, SkipForward, SkipBack, Play, Pause, Music, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useLobby } from '../../context/LobbyContext';
+import { formatFullName } from '../../lib/utils';
 
 const formatTime = (ms) => {
   if (!ms) return '0:00';
@@ -163,7 +164,7 @@ const MediaPlayer = () => {
               </p>
             )}
             <p className="text-[10px] text-muted-foreground truncate">
-              Added by {currentTrack?.addedBy?.username || '—'}
+              Added by {currentTrack?.addedBy ? formatFullName(currentTrack.addedBy) : '—'}
             </p>
           </div>
 
@@ -202,7 +203,7 @@ const MediaPlayer = () => {
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Up Next</p>
               <p className="text-xs text-foreground truncate mt-0.5">{nextTrack.title}</p>
             </div>
-            <p className="text-[10px] text-muted-foreground shrink-0 pl-2">by {nextTrack.addedBy?.username}</p>
+            <p className="text-[10px] text-muted-foreground shrink-0 pl-2">by {formatFullName(nextTrack.addedBy)}</p>
           </div>
         )}
       </div>

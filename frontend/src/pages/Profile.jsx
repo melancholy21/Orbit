@@ -12,7 +12,7 @@ import PostCard from '../components/PostCard';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { getImageUrl } from '../lib/utils';
+import { getImageUrl, formatFullName, getInitials } from '../lib/utils';
 
 
 const Profile = () => {
@@ -21,11 +21,11 @@ const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const isOwnProfile = !id || id === user?._id;
-  const targetUserId = id || user?._id;
-
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
+
+  const isOwnProfile = profile ? profile._id === user?._id : (!id || id === user?._id);
+  const targetUserId = id || user?._id;
   const [friendsPreview, setFriendsPreview] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -52,12 +52,15 @@ const Profile = () => {
       setIsLoading(true);
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const [profileData, postsData, friendsData] = await Promise.all([
-          userService.getUserProfile(targetUserId, user.token),
-          userService.getUserPosts(targetUserId, user.token),
-          axios.get(`/api/users/${targetUserId}/friends`, config).then(res => res.data).catch(() => []),
-        ]);
+        // Resolve profile first to obtain user's ObjectId (supports both userId and username lookups on backend)
+        const profileData = await userService.getUserProfile(targetUserId, user.token);
         setProfile(profileData);
+
+        const resolvedId = profileData._id;
+        const [postsData, friendsData] = await Promise.all([
+          userService.getUserPosts(resolvedId, user.token),
+          axios.get(`/api/users/${resolvedId}/friends`, config).then(res => res.data).catch(() => []),
+        ]);
         setPosts(postsData);
         setFriendsPreview(friendsData);
         setEditForm({
@@ -202,7 +205,7 @@ const Profile = () => {
   const executeFollowToggle = async () => {
     setConfirmModal(prev => ({ ...prev, open: false }));
     try {
-      await axios.put(`/api/users/${targetUserId}/follow`, {}, {
+      await axios.put(`/api/users/${profile._id}/follow`, {}, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       const isFollowing = profile.followers.includes(user._id);
@@ -221,11 +224,11 @@ const Profile = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       if (action === 'request') {
-        await axios.post(`/api/users/friends/${targetUserId}/request`, {}, config);
+        await axios.post(`/api/users/friends/${profile._id}/request`, {}, config);
         setProfile(prev => ({ ...prev, friendRequestsReceived: [...(prev.friendRequestsReceived || []), user._id] }));
         toast.success('Friend request sent');
       } else if (action === 'accept') {
-        await axios.put(`/api/users/friends/${targetUserId}/accept`, {}, config);
+        await axios.put(`/api/users/friends/${profile._id}/accept`, {}, config);
         setProfile(prev => ({
           ...prev,
           friends: [...(prev.friends || []), user._id],
@@ -243,7 +246,7 @@ const Profile = () => {
           isDestructive: true
         });
       } else if (action === 'cancel') {
-        await axios.delete(`/api/users/friends/${targetUserId}/cancel`, config);
+        await axios.delete(`/api/users/friends/${profile._id}/cancel`, config);
         setProfile(prev => ({
           ...prev,
           friendRequestsReceived: prev.friendRequestsReceived?.filter(id => id.toString() !== user._id.toString())
@@ -259,7 +262,7 @@ const Profile = () => {
   const executeUnfriendAction = async (config) => {
     setConfirmModal(prev => ({ ...prev, open: false }));
     try {
-      await axios.delete(`/api/users/friends/${targetUserId}/remove`, config);
+      await axios.delete(`/api/users/friends/${profile._id}/remove`, config);
       setProfile(prev => ({
         ...prev,
         friends: prev.friends?.filter(id => id !== user._id)
@@ -291,7 +294,7 @@ const Profile = () => {
     setListModal({ open: true, title: type, users: [], loading: true });
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const { data } = await axios.get(`/api/users/${targetUserId}/${type.toLowerCase()}`, config);
+      const { data } = await axios.get(`/api/users/${profile._id}/${type.toLowerCase()}`, config);
       setListModal(prev => ({ ...prev, users: data, loading: false }));
     } catch (err) {
       toast.error(`Failed to load ${type}`);
@@ -385,7 +388,7 @@ const Profile = () => {
             <Avatar className="w-28 h-28 md:w-32 md:h-32 border-4 border-background/40 backdrop-blur-sm shadow-lg ring-1 ring-border/30">
               <AvatarImage src={profile.profilePicture} alt={profile.username} />
               <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
-                {(profile.firstName || profile.lastName) ? (profile.firstName ? profile.firstName.charAt(0).toUpperCase() : profile.lastName.charAt(0).toUpperCase()) : profile.username?.charAt(0).toUpperCase()}
+                {getInitials(profile)}
               </AvatarFallback>
             </Avatar>
 
@@ -407,7 +410,7 @@ const Profile = () => {
           {/* User Names & Username */}
           <div className="mt-5">
             <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">
-              {profile.firstName || profile.lastName ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() : profile.username}
+              {formatFullName(profile)}
             </h1>
             <p className="text-xs text-muted-foreground font-semibold mt-0.5">@{profile.username}</p>
           </div>
@@ -622,12 +625,12 @@ const Profile = () => {
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={u.profilePicture} />
                         <AvatarFallback className="bg-primary/20 text-primary font-bold">
-                          {(u.firstName || u.lastName) ? (u.firstName ? u.firstName.charAt(0).toUpperCase() : u.lastName.charAt(0).toUpperCase()) : u.username?.charAt(0).toUpperCase()}
+                          {getInitials(u)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm">
-                          {u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : u.username}
+                          {formatFullName(u)}
                         </span>
                         {u.bio && <span className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{u.bio}</span>}
                       </div>

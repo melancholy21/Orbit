@@ -18,8 +18,8 @@
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 45%;
+    --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
@@ -33,8 +33,8 @@
     --card-foreground: 210 40% 98%;
     --popover: 224 71% 7%;
     --popover-foreground: 210 40% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 263 55% 58%;
+    --primary-foreground: 224 71% 4%;
     --secondary: 224 71% 12%;
     --secondary-foreground: 210 40% 98%;
     --muted: 224 71% 12%;
@@ -42,10 +42,10 @@
     --accent: 224 71% 15%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 224 71% 4%;
     --border: 224 71% 12%;
     --input: 224 71% 12%;
-    --ring: 263.4 70% 50.4%;
+    --ring: 263 55% 58%;
   }
 
   .orbit {
@@ -55,8 +55,8 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 24%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217.2 91.2% 70%;
+    --primary-foreground: 222 47% 20%;
     --secondary: 217.2 32.6% 30%;
     --secondary-foreground: 210 40% 98%;
     --muted: 222 47% 28%;
@@ -64,7 +64,7 @@
     --accent: 217.2 32.6% 23.5%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 222 47% 20%;
     --border: 217.2 32.6% 23.5%;
     --input: 217.2 32.6% 23.5%;
     --ring: 224.3 76.3% 48%;
@@ -79,6 +79,22 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+
+  /* Visible focus ring on every interactive element */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Respect prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   h1,

@@ -17,6 +17,7 @@ import DTRSection from '../components/hangs/DTRSection';
 import hangsService from '../features/hangs/hangsService';
 import userService from '../features/users/userService';
 import toast from 'react-hot-toast';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const Hangs = () => {
   const { user } = useSelector((state) => state.auth);
@@ -678,12 +679,10 @@ const Hangs = () => {
                         <Avatar className="w-4 h-4">
                           <AvatarImage src={friend.profilePicture} />
                           <AvatarFallback className="text-[7px]">
-                            {(friend.firstName || friend.lastName) ? (friend.firstName ? friend.firstName.charAt(0).toUpperCase() : friend.lastName.charAt(0).toUpperCase()) : friend.username?.charAt(0).toUpperCase()}
+                            {getInitials(friend)}
                           </AvatarFallback>
                         </Avatar>
-                        {friend.firstName || friend.lastName 
-                          ? `${friend.firstName || ''} ${friend.lastName || ''}`.trim() 
-                          : friend.username}
+                        {formatFullName(friend)}
                       </button>
                     );
                   })}

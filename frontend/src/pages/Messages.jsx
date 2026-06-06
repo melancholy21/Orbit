@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Card } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Loader2, MessageSquare } from 'lucide-react';
+import { formatFullName, getInitials } from '../lib/utils';
 
 const Messages = () => {
   const [conversations, setConversations] = useState([]);
@@ -77,13 +78,13 @@ const Messages = () => {
                     <Avatar className="w-12 h-12 ring-2 ring-violet-500/10 group-hover:ring-violet-500/30 transition-all">
                       <AvatarImage src={friend.profilePicture} />
                       <AvatarFallback className="bg-primary/20 text-primary">
-                        {friend.username?.charAt(0).toUpperCase()}
+                        {getInitials(friend)}
                       </AvatarFallback>
                     </Avatar>
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full animate-pulse" />
                   </div>
                   <span className="text-[10px] font-semibold text-muted-foreground group-hover:text-foreground transition-colors max-w-[64px] truncate">
-                    {friend.username}
+                    {formatFullName(friend)}
                   </span>
                 </div>
               ))}
@@ -118,7 +119,7 @@ const Messages = () => {
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={otherUser.profilePicture} />
                     <AvatarFallback className="bg-primary/20 text-primary">
-                      {(otherUser.firstName || otherUser.lastName) ? (otherUser.firstName ? otherUser.firstName.charAt(0).toUpperCase() : otherUser.lastName.charAt(0).toUpperCase()) : otherUser.username.charAt(0).toUpperCase()}
+                      {getInitials(otherUser)}
                     </AvatarFallback>
                   </Avatar>
                   {isUserOnline && (
@@ -130,9 +131,7 @@ const Messages = () => {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <h3 className={`font-semibold text-foreground truncate ${isUnread ? 'font-bold text-violet-300' : ''}`}>
-                        {otherUser.firstName || otherUser.lastName 
-                          ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() 
-                          : otherUser.username}
+                        {formatFullName(otherUser)}
                       </h3>
                       {isUserOnline && (
                         <span className="text-[9px] font-extrabold text-green-500 uppercase tracking-wider bg-green-500/10 px-1.5 py-0.5 rounded shrink-0">

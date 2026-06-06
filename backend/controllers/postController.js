@@ -6,31 +6,66 @@ import { onlineUsers } from '../socket.js';
 
 const handleMentions = async (req, content, postId, commentId = null) => {
   try {
-    const mentions = content.match(/@([a-zA-Z0-9._-]+)/g) || [];
-    const usernames = [...new Set(mentions.map(m => m.slice(1)))];
-    
-    if (usernames.length === 0) return;
-
-    // Find users
-    const users = await User.find({ username: { $in: usernames } });
     const io = req.app.get('io');
+    const notifiedUserIds = new Set();
 
-    for (const targetUser of users) {
-      // Don't notify yourself
-      if (targetUser._id.toString() === req.user.id.toString()) continue;
+    // 1. Process Markdown Mentions: @[username](userId)
+    const markdownRegex = /@\[([^\]]+)\]\(([a-fA-F0-9]{24})\)/g;
+    let mdMatch;
+    while ((mdMatch = markdownRegex.exec(content)) !== null) {
+      const targetUserId = mdMatch[2];
+      if (targetUserId === req.user.id.toString()) continue;
+      if (notifiedUserIds.has(targetUserId)) continue;
 
+      notifiedUserIds.add(targetUserId);
+
+      // Create notification
       const notif = await Notification.create({
-        recipient: targetUser._id,
+        recipient: targetUserId,
         sender: req.user.id,
         type: 'mention',
         content: commentId ? 'mentioned you in a comment' : 'mentioned you in a post',
         post: postId
       });
 
-      const receiverSocketId = onlineUsers.get(targetUser._id.toString());
+      const receiverSocketId = onlineUsers.get(targetUserId);
       if (receiverSocketId && io) {
         const populatedNotif = await notif.populate('sender', 'username profilePicture firstName lastName');
         io.to(receiverSocketId).emit('newNotification', populatedNotif);
+      }
+    }
+
+    // 2. Process Legacy Mentions: @username
+    const legacyRegex = /\B@([a-zA-Z0-9._-]+)/g;
+    const legacyUsernames = [];
+    let legMatch;
+    while ((legMatch = legacyRegex.exec(content)) !== null) {
+      legacyUsernames.push(legMatch[1]);
+    }
+
+    if (legacyUsernames.length > 0) {
+      const uniqueUsernames = [...new Set(legacyUsernames)];
+      const legacyUsers = await User.find({ username: { $in: uniqueUsernames } });
+      for (const targetUser of legacyUsers) {
+        const targetUserId = targetUser._id.toString();
+        if (targetUserId === req.user.id.toString()) continue;
+        if (notifiedUserIds.has(targetUserId)) continue;
+
+        notifiedUserIds.add(targetUserId);
+
+        const notif = await Notification.create({
+          recipient: targetUser._id,
+          sender: req.user.id,
+          type: 'mention',
+          content: commentId ? 'mentioned you in a comment' : 'mentioned you in a post',
+          post: postId
+        });
+
+        const receiverSocketId = onlineUsers.get(targetUserId);
+        if (receiverSocketId && io) {
+          const populatedNotif = await notif.populate('sender', 'username profilePicture firstName lastName');
+          io.to(receiverSocketId).emit('newNotification', populatedNotif);
+        }
       }
     }
   } catch (err) {
@@ -433,6 +468,150 @@ export const sharePost = async (req, res, next) => {
 
     await post.save();
     res.status(200).json(post.shares);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const editComment = async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      res.status(404);
+      throw new Error('Comment not found');
+    }
+
+    if (comment.author.toString() !== req.user.id) {
+      res.status(401);
+      throw new Error('User not authorized to edit this comment');
+    }
+
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      res.status(400);
+      throw new Error('Comment content cannot be empty');
+    }
+
+    comment.content = content;
+    await comment.save();
+
+    const populatedComment = await Comment.findById(comment._id)
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('replies.author', 'username profilePicture firstName lastName');
+
+    res.status(200).json(populatedComment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteComment = async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      res.status(404);
+      throw new Error('Comment not found');
+    }
+
+    // Check if user is comment author OR post author
+    const post = await Post.findById(comment.post);
+    const isCommentAuthor = comment.author.toString() === req.user.id;
+    const isPostAuthor = post && post.author.toString() === req.user.id;
+
+    if (!isCommentAuthor && !isPostAuthor) {
+      res.status(401);
+      throw new Error('User not authorized to delete this comment');
+    }
+
+    // Remove comment ID from Post's comments array
+    if (post) {
+      post.comments = post.comments.filter(id => id.toString() !== comment._id.toString());
+      await post.save();
+    }
+
+    await comment.deleteOne();
+
+    res.status(200).json({ commentId: req.params.commentId, postId: comment.post });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const editReply = async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      res.status(404);
+      throw new Error('Comment not found');
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      res.status(404);
+      throw new Error('Reply not found');
+    }
+
+    if (reply.author.toString() !== req.user.id) {
+      res.status(401);
+      throw new Error('User not authorized to edit this reply');
+    }
+
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      res.status(400);
+      throw new Error('Reply content cannot be empty');
+    }
+
+    reply.content = content;
+    await comment.save();
+
+    const populatedComment = await Comment.findById(comment._id)
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('replies.author', 'username profilePicture firstName lastName');
+
+    res.status(200).json(populatedComment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteReply = async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      res.status(404);
+      throw new Error('Comment not found');
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      res.status(404);
+      throw new Error('Reply not found');
+    }
+
+    // Authorized if user is reply author OR comment author OR post author
+    const post = await Post.findById(comment.post);
+    const isReplyAuthor = reply.author.toString() === req.user.id;
+    const isCommentAuthor = comment.author.toString() === req.user.id;
+    const isPostAuthor = post && post.author.toString() === req.user.id;
+
+    if (!isReplyAuthor && !isCommentAuthor && !isPostAuthor) {
+      res.status(401);
+      throw new Error('User not authorized to delete this reply');
+    }
+
+    comment.replies = comment.replies.filter(r => r._id.toString() !== req.params.replyId);
+    await comment.save();
+
+    const populatedComment = await Comment.findById(comment._id)
+      .populate('author', 'username profilePicture firstName lastName')
+      .populate('replies.author', 'username profilePicture firstName lastName');
+
+    res.status(200).json(populatedComment);
   } catch (error) {
     next(error);
   }

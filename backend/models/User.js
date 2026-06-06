@@ -32,11 +32,19 @@ const userSchema = new mongoose.Schema({
   },
   firstName: {
     type: String,
-    default: ''
+    default: '',
+    set: function(val) {
+      if (!val) return '';
+      return val.trim().replace(/\b\w/g, char => char.toUpperCase());
+    }
   },
   lastName: {
     type: String,
-    default: ''
+    default: '',
+    set: function(val) {
+      if (!val) return '';
+      return val.trim().replace(/\b\w/g, char => char.toUpperCase());
+    }
   },
   isOnboarded: {
     type: Boolean,
