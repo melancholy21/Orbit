@@ -66,9 +66,12 @@ app.use(helmet({
   frameguard: { action: 'deny' },
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'none'"],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
-      styleSrc: ["'unsafe-inline'"],
+      connectSrc: ["'self'", "wss://*", "https://*", "http://localhost:*", "ws://localhost:*"],
     }
   }
 }));
