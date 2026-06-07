@@ -17,6 +17,17 @@ import { initSocket } from './socket.js';
 import cookieParser from 'cookie-parser';
 import { mongoSanitize } from './middleware/mongoSanitize.js';
 
+import authRoutes from './routes/authRoutes.js';
+import postRoutes from './routes/postRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import hangsRoutes from './routes/hangsRoutes.js';
+import lobbyRoutes from './routes/lobbyRoutes.js';
+import spotifyRoutes from './routes/spotifyRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
+
 // Connect to database
 connectDB();
 
@@ -28,7 +39,6 @@ app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      'https://orbit-rouge-three.vercel.app',
       'https://siding-hug-slab.ngrok-free.dev',
       'http://localhost:5173'
     ].filter(Boolean).map(o => o.trim().replace(/\/$/, ''));
@@ -103,17 +113,6 @@ app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 // Make io accessible in routes
 app.set('io', io);
 
-import authRoutes from './routes/authRoutes.js';
-import postRoutes from './routes/postRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import uploadRoutes from './routes/uploadRoutes.js';
-import hangsRoutes from './routes/hangsRoutes.js';
-import lobbyRoutes from './routes/lobbyRoutes.js';
-import spotifyRoutes from './routes/spotifyRoutes.js';
-import messageRoutes from './routes/messageRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
-import roomRoutes from './routes/roomRoutes.js';
-
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
@@ -131,8 +130,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Make uploads folder static
-const __dirname = path.resolve();
-app.use('/uploads', express.static(path.join(__dirname, '/uploads'), { maxAge: '1d' }));
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '1d' }));
+
+// Serve Frontend Static Assets in Production
+if (process.env.NODE_ENV === 'production') {
+  const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+  app.use(express.static(frontendDistPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Error Handler
 app.use(errorHandler);

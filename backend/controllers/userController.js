@@ -516,7 +516,7 @@ export const getFollowers = async (req, res, next) => {
       throw new Error('User not found');
     }
     user = await cleanUserRelationships(user);
-    const populated = await user.populate('followers', 'username profilePicture bio');
+    const populated = await user.populate('followers', 'username profilePicture bio firstName lastName');
     res.status(200).json(populated.followers);
   } catch (error) {
     next(error);
@@ -531,7 +531,7 @@ export const getFollowing = async (req, res, next) => {
       throw new Error('User not found');
     }
     user = await cleanUserRelationships(user);
-    const populated = await user.populate('following', 'username profilePicture bio');
+    const populated = await user.populate('following', 'username profilePicture bio firstName lastName');
     res.status(200).json(populated.following);
   } catch (error) {
     next(error);
@@ -546,7 +546,7 @@ export const getFriendsList = async (req, res, next) => {
       throw new Error('User not found');
     }
     user = await cleanUserRelationships(user);
-    const populated = await user.populate('friends', 'username profilePicture bio');
+    const populated = await user.populate('friends', 'username profilePicture bio firstName lastName');
     res.status(200).json(populated.friends);
   } catch (error) {
     next(error);
