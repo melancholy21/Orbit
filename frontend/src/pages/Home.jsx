@@ -69,7 +69,7 @@ const Home = () => {
       try {
         const res = await axios.get('/api/lobby/presence', {
           headers: { Authorization: `Bearer ${user?.token}` },
-          baseURL: import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'
+          baseURL: import.meta.env.VITE_API_URL?.replace('/api', '') || window.location.origin
         });
         setLobbyCount(res.data?.count || 0);
       } catch {}

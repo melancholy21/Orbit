@@ -67,10 +67,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://sdk.scdn.co", "https://*.spotify.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.scdn.co", "https://i.scdn.co"],
+      frameSrc: ["'self'", "https://sdk.scdn.co", "https://*.spotify.com"],
       connectSrc: ["'self'", "wss://*", "https://*", "http://localhost:*", "ws://localhost:*"],
     }
   }
